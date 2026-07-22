@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://northeastbasecamp.com/sitemap.xml
+
+LLMS: https://northeastbasecamp.com/llms.txt

@@ -1,0 +1,23 @@
+# Runtime data
+data/bookings.json
+
+# Source/reference materials not required for deployment
+assets/source/
+assets/brand-posters/
+assets/uploads/*.jpeg
+assets/uploads/*.HEIC
+assets/uploads/*.MOV.mp4
+assets/photos/*.jpg
+The Stay - Premium Framer Template for Airbnb & Vacation Rentals.html
+The Stay - Premium Framer Template for Airbnb & Vacation Rentals_files/
+tmp/
+
+# Local/editor files
+.DS_Store
+Thumbs.db
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.*
