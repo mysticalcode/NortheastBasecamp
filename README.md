@@ -21,11 +21,15 @@ The app uses `process.env.PORT` when available, otherwise it runs on port `3000`
 
 1. Create a Node.js app in Hostinger.
 2. Set the application root to the uploaded repository folder.
-3. Set the startup file to `server.js`.
-4. Set the startup command to `npm start`.
-5. Use Node.js 18 or newer.
-6. Keep `data/` writable so booking requests can be stored in `data/bookings.json`.
-7. Point the domain to the Node.js app, not only to static hosting, because bookings use `/api/bookings`.
+3. Framework type: `Other`.
+4. Entry file: `server.js`.
+5. Build command: `npm run build`.
+6. Startup command: `npm start`.
+7. Use Node.js 18 or newer.
+8. Keep `data/` writable so booking requests can be stored in `data/bookings.json`.
+9. Point the domain to the Node.js app, not only to static hosting, because bookings use `/api/bookings`.
+
+If Hostinger shows `EADDRINUSE: address already in use :::3000`, check that `npm start` is not entered as the build command. `npm start` launches the long-running server and should only be used as the startup command.
 
 No external npm packages are required.
 
