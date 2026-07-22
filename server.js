@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT || 3000);
+const host = process.env.HOST || "0.0.0.0";
 const bookingsFile = join(__dirname, "data", "bookings.json");
 
 const contentTypes = {
@@ -110,6 +111,11 @@ async function serveStatic(req, res) {
 }
 
 const server = createServer(async (req, res) => {
+  if (req.method === "GET" && req.url === "/healthz") {
+    sendJson(res, 200, { ok: true, service: "northeast-basecamp-site" });
+    return;
+  }
+
   if (req.method === "POST" && req.url === "/api/bookings") {
     try {
       const booking = cleanBooking(await readJsonBody(req));
@@ -130,6 +136,11 @@ const server = createServer(async (req, res) => {
   res.end("Method not allowed");
 });
 
-server.listen(port, () => {
-  console.log(`Northeast Basecamp site running at http://localhost:${port}`);
+server.on("error", (error) => {
+  console.error(`Northeast Basecamp server failed to start on ${host}:${port}`, error);
+  process.exit(1);
+});
+
+server.listen(port, host, () => {
+  console.log(`Northeast Basecamp site running at http://${host}:${port}`);
 });
