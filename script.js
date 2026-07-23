@@ -128,9 +128,10 @@ bookingForm.addEventListener("submit", async (event) => {
       body: JSON.stringify(booking)
     });
 
-    const result = await response.json();
+    const responseType = response.headers.get("content-type") || "";
+    const result = responseType.includes("application/json") ? await response.json() : {};
     if (!response.ok) {
-      throw new Error(result.message || "Booking API request failed");
+      throw new Error(result.message || `Booking service is unavailable (HTTP ${response.status}). Please try again shortly.`);
     }
 
     note.replaceChildren(`Booking request saved. Reference: ${result.reference}. `);
@@ -147,7 +148,9 @@ bookingForm.addEventListener("submit", async (event) => {
     document.querySelector("#nights").value = String(booking.nights);
     updateSummary();
   } catch (error) {
-    note.textContent = error.message || "We could not reach the booking backend. Please try again after a moment.";
+    note.textContent = error instanceof TypeError
+      ? "The booking service is unavailable right now. Please try again in a few minutes."
+      : error.message || "We could not save your booking request. Please try again after a moment.";
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = "Send booking request";

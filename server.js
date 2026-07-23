@@ -308,32 +308,36 @@ async function saveBooking(booking) {
   };
   record.invoicePath = await createInvoicePdf(record);
 
-  const pool = await getDbPool();
-  if (pool) {
-    await pool.execute(
-      `INSERT INTO bookings
-        (id, created_at, status, festival, plan, arrival_date, nights, guests, dinner_included, base_amount, dinner_amount, total_amount, name, phone, invoice_path, source)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        record.id,
-        record.createdAt.slice(0, 19).replace("T", " "),
-        record.status,
-        record.festival,
-        record.plan,
-        record.arrivalDate || null,
-        record.nights,
-        record.guests,
-        record.dinnerIncluded ? 1 : 0,
-        record.baseAmount,
-        record.dinnerAmount,
-        record.totalAmount,
-        record.name,
-        record.phone,
-        record.invoicePath,
-        "website"
-      ]
-    );
-    return record;
+  try {
+    const pool = await getDbPool();
+    if (pool) {
+      await pool.execute(
+        `INSERT INTO bookings
+          (id, created_at, status, festival, plan, arrival_date, nights, guests, dinner_included, base_amount, dinner_amount, total_amount, name, phone, invoice_path, source)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          record.id,
+          record.createdAt.slice(0, 19).replace("T", " "),
+          record.status,
+          record.festival,
+          record.plan,
+          record.arrivalDate || null,
+          record.nights,
+          record.guests,
+          record.dinnerIncluded ? 1 : 0,
+          record.baseAmount,
+          record.dinnerAmount,
+          record.totalAmount,
+          record.name,
+          record.phone,
+          record.invoicePath,
+          "website"
+        ]
+      );
+      return record;
+    }
+  } catch (error) {
+    console.error("MySQL booking storage failed; using local booking storage instead.", error.message);
   }
 
   await mkdir(dirname(bookingsFile), { recursive: true });
