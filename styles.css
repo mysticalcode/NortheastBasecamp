@@ -153,6 +153,12 @@ a {
   width: 18px;
 }
 
+@media (min-width: 1101px) {
+  .mobile-menu-toggle {
+    display: none !important;
+  }
+}
+
 .site-header.is-menu-open .mobile-menu-toggle span:first-child {
   transform: translateY(6px) rotate(45deg);
 }
