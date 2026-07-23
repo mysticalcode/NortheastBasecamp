@@ -24,12 +24,12 @@ The app uses `process.env.PORT` when available, otherwise it runs on port `3000`
 3. Framework type: `Other`.
 4. Entry file: `server.js`.
 5. Build command: `npm run build`.
-6. Startup command: `npm start`.
+6. Output directory: leave blank.
 7. Use Node.js 20 or newer (Node.js 18 also works).
 8. Keep `data/` writable so booking requests can be stored in `data/bookings.json`.
 9. Point the domain to the Node.js app, not only to static hosting, because bookings use `/api/bookings`.
 
-Leave `PORT` unset in hPanel. Hostinger supplies the port to the application; the server reads it automatically and defaults to `3000` when it is not supplied. Do not run `npm start` in the build-command field, as this launches a second server during the build and produces the `EADDRINUSE` error.
+Hostinger starts the configured entry file automatically after the build. Leave `PORT` unset in hPanel: Hostinger supplies it to the application, and the server reads it automatically (falling back to `3000`). Do not enter `npm start` as the build command, as that launches a second server during the build and produces the `EADDRINUSE` error.
 
 If Hostinger shows `EADDRINUSE: address already in use :::3000`, check that `npm start` is not entered as the build command. `npm start` launches the long-running server and should only be used as the startup command.
 
