@@ -1,5 +1,6 @@
 # Runtime data
 data/bookings.json
+data/invoices/
 
 # Source/reference materials not required for deployment
 assets/source/

@@ -12,6 +12,22 @@ function getPort(value) {
 const port = getPort(process.env.PORT);
 const host = process.env.HOST || "0.0.0.0";
 const bookingsFile = join(__dirname, "data", "bookings.json");
+const invoicesDirectory = join(__dirname, "data", "invoices");
+const ziroFestival = "Ziro Music Festival 2026";
+const dinnerRatePerGuestNight = 400;
+const planDetails = {
+  "Dome Tent - 2 Sharing": { rate: 2200, rateType: "night" },
+  "Dome Tent - 3 Sharing": { rate: 2000, rateType: "night" },
+  "Dome Tent - Solo": { rate: 3000, rateType: "night" },
+  "Alpine Tent - 4 Sharing": { rate: 2000, rateType: "night" },
+  "Alpine Tent - 3 Sharing": { rate: 2600, rateType: "night" },
+  "Alpine Tent - 2 Sharing": { rate: 3800, rateType: "night" },
+  "Premium Tent": { rate: 4500, rateType: "night" },
+  "5N/6D Ex Guwahati - Traveller": { rate: 18000, rateType: "package", nights: 5 },
+  "5N/6D Ex Guwahati - Urbania": { rate: 22000, rateType: "package", nights: 5 },
+  "5N/6D Ex Guwahati - Innova / Ertiga": { rate: 20000, rateType: "package", nights: 5 },
+  "4N/5D Ex Naharlagun": { rate: 12000, rateType: "package", nights: 4 }
+};
 const databaseUrl = process.env.DATABASE_URL || "";
 const dbConfig = {
   host: process.env.DB_HOST || process.env.MYSQL_HOST || "",
@@ -34,7 +50,8 @@ const contentTypes = {
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
   ".mp4": "video/mp4",
-  ".webp": "image/webp"
+  ".webp": "image/webp",
+  ".pdf": "application/pdf"
 };
 
 function sendJson(res, status, payload) {
@@ -50,17 +67,40 @@ async function initializeDatabase(pool) {
       status VARCHAR(32) NOT NULL DEFAULT 'new',
       festival VARCHAR(255) NOT NULL,
       plan VARCHAR(255) NOT NULL,
-      retail_rate VARCHAR(255) NOT NULL,
       arrival_date DATE NULL,
       nights INT NOT NULL,
       guests INT NOT NULL,
-      food VARCHAR(255) NOT NULL,
+      dinner_included TINYINT(1) NOT NULL DEFAULT 0,
+      base_amount INT NOT NULL,
+      dinner_amount INT NOT NULL DEFAULT 0,
+      total_amount INT NOT NULL,
       name VARCHAR(255) NOT NULL,
       phone VARCHAR(64) NOT NULL,
-      notes TEXT NULL,
+      invoice_path VARCHAR(255) NOT NULL,
       source VARCHAR(64) NOT NULL DEFAULT 'website'
     )
   `);
+
+  const [bookingColumns] = await pool.query("SHOW COLUMNS FROM bookings");
+  const bookingColumnNames = new Set(bookingColumns.map((column) => column.Field));
+  if (bookingColumnNames.has("retail_rate")) {
+    await pool.query("ALTER TABLE bookings MODIFY retail_rate VARCHAR(255) NULL");
+  }
+  if (bookingColumnNames.has("food")) {
+    await pool.query("ALTER TABLE bookings MODIFY food VARCHAR(255) NULL");
+  }
+  const requiredBookingColumns = [
+    ["dinner_included", "TINYINT(1) NOT NULL DEFAULT 0"],
+    ["base_amount", "INT NOT NULL DEFAULT 0"],
+    ["dinner_amount", "INT NOT NULL DEFAULT 0"],
+    ["total_amount", "INT NOT NULL DEFAULT 0"],
+    ["invoice_path", "VARCHAR(255) NULL"]
+  ];
+  for (const [name, definition] of requiredBookingColumns) {
+    if (!bookingColumnNames.has(name)) {
+      await pool.query(`ALTER TABLE bookings ADD COLUMN ${name} ${definition}`);
+    }
+  }
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS enquiries (
@@ -118,21 +158,29 @@ async function readJsonBody(req) {
 }
 
 function cleanBooking(input) {
+  const plan = String(input.plan || "").trim();
+  const planDetail = planDetails[plan];
   const booking = {
-    festival: String(input.festival || "").trim(),
-    plan: String(input.plan || "").trim(),
-    retailRate: String(input.retailRate || "").trim(),
+    festival: ziroFestival,
+    plan,
     arrivalDate: String(input.arrivalDate || "").trim(),
     nights: Number(input.nights || 0),
     guests: Number(input.guests || 0),
-    food: String(input.food || "").trim(),
+    dinnerIncluded: input.dinnerIncluded === true || input.dinnerIncluded === "true",
     name: String(input.name || "").trim(),
-    phone: String(input.phone || "").trim(),
-    notes: String(input.notes || "").trim()
+    phone: String(input.phone || "").trim()
   };
 
-  if (!booking.festival || !booking.plan || !booking.retailRate || !booking.arrivalDate || !booking.food || !booking.name || !booking.phone) {
+  if (!booking.plan || !booking.arrivalDate || !booking.name || !booking.phone) {
     throw new Error("Missing required booking fields");
+  }
+
+  if (!planDetail) {
+    throw new Error("Please select a valid stay option");
+  }
+
+  if (!/^2026-09-(2[4-7])$/.test(booking.arrivalDate)) {
+    throw new Error("Arrival date must be during Ziro Music Festival 2026");
   }
 
   if (!Number.isInteger(booking.nights) || booking.nights < 1 || booking.nights > 6) {
@@ -142,6 +190,19 @@ function cleanBooking(input) {
   if (!Number.isInteger(booking.guests) || booking.guests < 1 || booking.guests > 12) {
     throw new Error("Guest count must be between 1 and 12");
   }
+
+  const phoneDigits = booking.phone.replace(/\D/g, "");
+  if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+    throw new Error("Please enter a valid phone number");
+  }
+
+  if (planDetail.nights) {
+    booking.nights = planDetail.nights;
+  }
+
+  booking.baseAmount = planDetail.rate * booking.guests * (planDetail.rateType === "night" ? booking.nights : 1);
+  booking.dinnerAmount = booking.dinnerIncluded ? dinnerRatePerGuestNight * booking.guests * booking.nights : 0;
+  booking.totalAmount = booking.baseAmount + booking.dinnerAmount;
 
   return booking;
 }
@@ -170,6 +231,74 @@ function createReference(prefix) {
   return `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 }
 
+function formatInr(amount) {
+  return `INR ${new Intl.NumberFormat("en-IN").format(amount)}`;
+}
+
+function pdfEscape(value) {
+  return String(value).replace(/[\\()]/g, "\\$&").replace(/[^\x20-\x7E]/g, "?");
+}
+
+async function createInvoicePdf(record) {
+  const invoicePath = join(invoicesDirectory, `${record.id}.pdf`);
+  const lines = [
+    [20, "NORTHEAST BASECAMP"],
+    [12, "BOOKING REQUEST INVOICE"],
+    [10, ""],
+    [10, `Invoice reference: ${record.id}`],
+    [10, `Issued: ${new Date(record.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`],
+    [10, `Guest: ${record.name}`],
+    [10, `Phone: ${record.phone}`],
+    [10, ""],
+    [12, "Booking details"],
+    [10, `Festival: ${record.festival}`],
+    [10, `Package: ${record.plan}`],
+    [10, `Arrival: ${record.arrivalDate}`],
+    [10, `Guests: ${record.guests} | Nights: ${record.nights}`],
+    [10, `Dinner: ${record.dinnerIncluded ? "Included" : "Not included"}`],
+    [10, ""],
+    [10, `Base package: ${formatInr(record.baseAmount)}`],
+    [10, `Dinner (${record.dinnerIncluded ? `${record.guests} guests x ${record.nights} nights x INR ${dinnerRatePerGuestNight}` : "not selected"}): ${formatInr(record.dinnerAmount)}`],
+    [14, `TOTAL: ${formatInr(record.totalAmount)}`],
+    [10, ""],
+    [9, "This is a booking request invoice, not a payment receipt."],
+    [9, "Availability and payment instructions will be confirmed by Northeast Basecamp."]
+  ];
+  let cursorY = 800;
+  const commands = ["BT", "/F1 10 Tf", "50 800 Td"];
+  for (const [size, text] of lines) {
+    commands.push(`/${size >= 14 ? "F2" : "F1"} ${size} Tf`);
+    commands.push(`0 -${size + 7} Td`);
+    commands.push(`(${pdfEscape(text)}) Tj`);
+    cursorY -= size + 7;
+  }
+  commands.push("ET");
+  const stream = commands.join("\n");
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 4 0 R >>",
+    `<< /Length ${Buffer.byteLength(stream, "utf8")} >>\nstream\n${stream}\nendstream`,
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>"
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  objects.forEach((object, index) => {
+    offsets.push(Buffer.byteLength(pdf, "utf8"));
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+  const xrefOffset = Buffer.byteLength(pdf, "utf8");
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (let index = 1; index < offsets.length; index += 1) {
+    pdf += `${String(offsets[index]).padStart(10, "0")} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  await mkdir(invoicesDirectory, { recursive: true });
+  await writeFile(invoicePath, pdf, "binary");
+  return `data/invoices/${record.id}.pdf`;
+}
+
 async function saveBooking(booking) {
   const record = {
     id: createReference("NBC"),
@@ -177,27 +306,30 @@ async function saveBooking(booking) {
     status: "new",
     ...booking
   };
+  record.invoicePath = await createInvoicePdf(record);
 
   const pool = await getDbPool();
   if (pool) {
     await pool.execute(
       `INSERT INTO bookings
-        (id, created_at, status, festival, plan, retail_rate, arrival_date, nights, guests, food, name, phone, notes, source)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, created_at, status, festival, plan, arrival_date, nights, guests, dinner_included, base_amount, dinner_amount, total_amount, name, phone, invoice_path, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         record.id,
         record.createdAt.slice(0, 19).replace("T", " "),
         record.status,
         record.festival,
         record.plan,
-        record.retailRate,
         record.arrivalDate || null,
         record.nights,
         record.guests,
-        record.food,
+        record.dinnerIncluded ? 1 : 0,
+        record.baseAmount,
+        record.dinnerAmount,
+        record.totalAmount,
         record.name,
         record.phone,
-        record.notes || null,
+        record.invoicePath,
         "website"
       ]
     );
@@ -300,7 +432,7 @@ const server = createServer(async (req, res) => {
     try {
       const booking = cleanBooking(await readJsonBody(req));
       const record = await saveBooking(booking);
-      sendJson(res, 201, { ok: true, reference: record.id });
+      sendJson(res, 201, { ok: true, reference: record.id, invoiceUrl: `/${record.invoicePath}`, totalAmount: record.totalAmount });
     } catch (error) {
       sendJson(res, 400, { ok: false, message: error.message });
     }

@@ -4,14 +4,16 @@ CREATE TABLE IF NOT EXISTS bookings (
   status VARCHAR(32) NOT NULL DEFAULT 'new',
   festival VARCHAR(255) NOT NULL,
   plan VARCHAR(255) NOT NULL,
-  retail_rate VARCHAR(255) NOT NULL,
   arrival_date DATE NULL,
   nights INT NOT NULL,
   guests INT NOT NULL,
-  food VARCHAR(255) NOT NULL,
+  dinner_included TINYINT(1) NOT NULL DEFAULT 0,
+  base_amount INT NOT NULL,
+  dinner_amount INT NOT NULL DEFAULT 0,
+  total_amount INT NOT NULL,
   name VARCHAR(255) NOT NULL,
   phone VARCHAR(64) NOT NULL,
-  notes TEXT NULL,
+  invoice_path VARCHAR(255) NOT NULL,
   source VARCHAR(64) NOT NULL DEFAULT 'website'
 );
 

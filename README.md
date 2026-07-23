@@ -8,6 +8,7 @@ Premium Ziro Festival campsite website with a Node.js backend for booking reques
 - Backend: `server.js`
 - Booking endpoint: `POST /api/bookings`
 - Booking storage: `data/bookings.json` created automatically at runtime
+- Booking invoices: a PDF is generated for every request under `data/invoices/`
 
 ## Local Run
 
@@ -26,7 +27,7 @@ The app uses `process.env.PORT` when available, otherwise it runs on port `3000`
 5. Build command: `npm run build`.
 6. Output directory: leave blank.
 7. Use Node.js 20 or newer (Node.js 18 also works).
-8. Keep `data/` writable so booking requests can be stored in `data/bookings.json`.
+8. Keep `data/` writable so booking requests and generated invoices can be stored.
 9. Point the domain to the Node.js app, not only to static hosting, because bookings use `/api/bookings`.
 
 Hostinger starts the configured entry file automatically after the build. Leave `PORT` unset in hPanel: Hostinger supplies it to the application, and the server reads it automatically (falling back to `3000`). Do not enter `npm start` as the build command, as that launches a second server during the build and produces the `EADDRINUSE` error.

@@ -717,6 +717,13 @@ p {
   margin-top: 3px;
 }
 
+.dinner-price {
+  color: var(--leaf);
+  font-size: 13px;
+  font-weight: 900;
+  margin: -3px 0 12px;
+}
+
 .premium-package {
   border-color: rgba(246, 181, 64, 0.55);
 }
@@ -772,6 +779,10 @@ p {
 
 .routes .price span {
   color: rgba(255, 253, 247, 0.68);
+}
+
+.routes .dinner-price {
+  color: var(--sun);
 }
 
 .itinerary-layout {
@@ -1418,16 +1429,17 @@ textarea:focus {
 
 .site-footer {
   background:
-    linear-gradient(135deg, rgba(247, 194, 26, 0.08), transparent 36%),
-    linear-gradient(160deg, #073f30, #0f1c18 78%);
+    linear-gradient(120deg, rgba(247, 194, 26, 0.13), transparent 42%),
+    #073f30;
+  border-top: 5px solid var(--sun);
   color: var(--cream);
-  padding: 66px 6vw 26px;
+  padding: 48px 6vw 24px;
 }
 
 .footer-main {
   display: grid;
-  gap: 40px;
-  grid-template-columns: minmax(260px, 1.3fr) minmax(160px, 0.7fr) minmax(260px, 1fr);
+  gap: 32px 56px;
+  grid-template-columns: minmax(260px, 1.25fr) minmax(280px, 1fr);
   margin: 0 auto;
   max-width: 1200px;
 }
@@ -1440,7 +1452,7 @@ textarea:focus {
 }
 
 .footer-brand-block {
-  gap: 12px;
+  gap: 14px;
 }
 
 .footer-logo {
@@ -1460,12 +1472,12 @@ textarea:focus {
 }
 
 .footer-motto {
-  color: var(--coral);
+  color: var(--cream);
   font-family: "Averia Serif Libre", Georgia, serif;
   font-size: 23px;
   line-height: 1.2;
   margin: 0;
-  max-width: 340px;
+  max-width: 370px;
 }
 
 .footer-copy {
@@ -1504,12 +1516,18 @@ textarea:focus {
 }
 
 .footer-nav {
-  gap: 12px;
+  column-gap: 28px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  row-gap: 12px;
 }
 
 .footer-nav .footer-title,
 .footer-contact .footer-title {
   margin-bottom: 6px;
+}
+
+.footer-nav .footer-title {
+  grid-column: 1 / -1;
 }
 
 .footer-nav a,
@@ -1528,7 +1546,10 @@ textarea:focus {
 }
 
 .footer-contact {
-  gap: 14px;
+  border-left: 1px solid rgba(255, 253, 247, 0.2);
+  gap: 13px;
+  grid-column: 2;
+  padding-left: 38px;
 }
 
 .footer-contact-row {
@@ -1599,7 +1620,7 @@ textarea:focus {
   display: flex;
   gap: 22px;
   justify-content: space-between;
-  margin: 48px auto 0;
+  margin: 42px auto 0;
   max-width: 1200px;
   padding-top: 22px;
 }
@@ -1850,7 +1871,9 @@ textarea:focus {
   }
 
   .footer-contact {
+    border-left: 0;
     grid-column: 1 / -1;
+    padding-left: 0;
   }
 }
 
@@ -1989,11 +2012,14 @@ textarea:focus {
 
   .footer-nav {
     border-top: 1px solid rgba(255, 253, 247, 0.16);
+    grid-template-columns: 1fr;
     padding-top: 28px;
   }
 
   .footer-contact {
+    border-top: 1px solid rgba(255, 253, 247, 0.16);
     grid-column: auto;
+    padding-top: 28px;
   }
 
   .footer-contact-row {

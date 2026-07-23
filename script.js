@@ -5,6 +5,11 @@ const bookingForm = document.querySelector("#bookingForm");
 const summary = document.querySelector("#bookingSummary");
 const menuToggle = document.querySelector("[data-menu-toggle]");
 const primaryNavigation = document.querySelector("#primary-navigation");
+const dinnerRatePerGuestNight = 400;
+
+function formatInr(amount) {
+  return `INR ${new Intl.NumberFormat("en-IN").format(amount)}`;
+}
 
 function setMenuOpen(isOpen) {
   if (!menuToggle || !primaryNavigation) return;
@@ -58,15 +63,25 @@ function updateParallax() {
 }
 
 function updateSummary() {
-  const festival = document.querySelector("#festival").value.split(" - ")[0];
   const planSelect = document.querySelector("#plan");
+  const selectedPlan = planSelect.selectedOptions[0];
   const plan = planSelect.value;
-  const rate = planSelect.selectedOptions[0]?.dataset.rate || "Rate on request";
   const arrivalDate = document.querySelector("#arrivalDate").value;
-  const nights = document.querySelector("#nights").value;
+  const nightsInput = document.querySelector("#nights");
+  const fixedNights = Number(selectedPlan.dataset.fixedNights || 0);
+  if (fixedNights) nightsInput.value = String(fixedNights);
+  nightsInput.disabled = Boolean(fixedNights);
+  const nights = Number(nightsInput.value);
   const guests = document.querySelector("#guests").value;
-  const food = document.querySelector("#food").value;
-  summary.textContent = `${festival} - ${arrivalDate || "arrival TBC"} - ${nights} night${nights === "1" ? "" : "s"} - ${guests} guest${guests === "1" ? "" : "s"} - ${plan} - ${rate} - ${food}`;
+  const dinnerIncluded = document.querySelector("#dinnerIncluded").value === "true";
+  const baseRate = Number(selectedPlan.dataset.rate);
+  const baseAmount = baseRate * Number(guests) * (selectedPlan.dataset.rateType === "night" ? nights : 1);
+  const dinnerAmount = dinnerIncluded ? dinnerRatePerGuestNight * Number(guests) * nights : 0;
+  const formattedDate = arrivalDate
+    ? new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short" }).format(new Date(`${arrivalDate}T00:00:00`))
+    : "arrival TBC";
+  const dinnerLine = dinnerIncluded ? `Dinner ${formatInr(dinnerAmount)}` : "Dinner not included";
+  summary.textContent = `${plan} | ${formattedDate} | ${nights} night${nights === 1 ? "" : "s"} | ${guests} guest${guests === "1" ? "" : "s"} | Base ${formatInr(baseAmount)} | ${dinnerLine} | Total ${formatInr(baseAmount + dinnerAmount)}`;
 }
 
 window.addEventListener("scroll", () => {
@@ -93,16 +108,13 @@ bookingForm.addEventListener("submit", async (event) => {
   const submitButton = event.currentTarget.querySelector(".submit");
   const note = document.querySelector("#bookingNote");
   const booking = {
-    festival: data.get("festival"),
     plan: data.get("plan"),
-    retailRate: document.querySelector("#plan").selectedOptions[0]?.dataset.rate || "Rate on request",
     arrivalDate: data.get("arrivalDate"),
     nights: Number(data.get("nights")),
     guests: Number(data.get("guests")),
-    food: data.get("food"),
+    dinnerIncluded: data.get("dinnerIncluded") === "true",
     name: data.get("name"),
-    phone: data.get("phone"),
-    notes: data.get("notes") || ""
+    phone: data.get("phone")
   };
 
   submitButton.disabled = true;
@@ -116,12 +128,18 @@ bookingForm.addEventListener("submit", async (event) => {
       body: JSON.stringify(booking)
     });
 
+    const result = await response.json();
     if (!response.ok) {
-      throw new Error("Booking API request failed");
+      throw new Error(result.message || "Booking API request failed");
     }
 
-    const result = await response.json();
-    note.textContent = `Request saved. Reference: ${result.reference}. Our team will contact you from sales@northeastbasecamp.com or +91 96789 80213 / +91 87199 62147 / +91 88229 14698.`;
+    note.replaceChildren(`Booking request saved. Reference: ${result.reference}. `);
+    const invoiceLink = document.createElement("a");
+    invoiceLink.href = result.invoiceUrl;
+    invoiceLink.textContent = "Download your invoice";
+    invoiceLink.target = "_blank";
+    invoiceLink.rel = "noopener";
+    note.append(invoiceLink, ". Our team will contact you shortly to confirm availability.");
     event.currentTarget.reset();
     document.querySelector("#plan").value = booking.plan;
     document.querySelector("#guests").value = booking.guests;
@@ -129,7 +147,7 @@ bookingForm.addEventListener("submit", async (event) => {
     document.querySelector("#nights").value = String(booking.nights);
     updateSummary();
   } catch (error) {
-    note.textContent = "We could not reach the booking backend. Please try again after a moment.";
+    note.textContent = error.message || "We could not reach the booking backend. Please try again after a moment.";
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = "Send booking request";
