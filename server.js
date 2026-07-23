@@ -4,9 +4,24 @@ import { dirname, extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const port = Number(process.env.PORT || 3000);
+function getPort(value) {
+  const parsed = Number.parseInt(value || "3000", 10);
+  return Number.isInteger(parsed) && parsed > 0 && parsed <= 65_535 ? parsed : 3000;
+}
+
+const port = getPort(process.env.PORT);
 const host = process.env.HOST || "0.0.0.0";
 const bookingsFile = join(__dirname, "data", "bookings.json");
+const databaseUrl = process.env.DATABASE_URL || "";
+const dbConfig = {
+  host: process.env.DB_HOST || process.env.MYSQL_HOST || "",
+  port: Number(process.env.DB_PORT || process.env.MYSQL_PORT || 3306),
+  user: process.env.DB_USER || process.env.MYSQL_USER || "",
+  password: process.env.DB_PASSWORD || process.env.MYSQL_PASSWORD || "",
+  database: process.env.DB_NAME || process.env.MYSQL_DATABASE || ""
+};
+const hasDatabaseConfig = Boolean(databaseUrl || (dbConfig.host && dbConfig.user && dbConfig.password && dbConfig.database));
+let dbPoolPromise;
 
 const contentTypes = {
   ".html": "text/html; charset=utf-8",
@@ -25,6 +40,70 @@ const contentTypes = {
 function sendJson(res, status, payload) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(payload));
+}
+
+async function initializeDatabase(pool) {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS bookings (
+      id VARCHAR(40) PRIMARY KEY,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      status VARCHAR(32) NOT NULL DEFAULT 'new',
+      festival VARCHAR(255) NOT NULL,
+      plan VARCHAR(255) NOT NULL,
+      retail_rate VARCHAR(255) NOT NULL,
+      arrival_date DATE NULL,
+      nights INT NOT NULL,
+      guests INT NOT NULL,
+      food VARCHAR(255) NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      phone VARCHAR(64) NOT NULL,
+      notes TEXT NULL,
+      source VARCHAR(64) NOT NULL DEFAULT 'website'
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS enquiries (
+      id VARCHAR(40) PRIMARY KEY,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      status VARCHAR(32) NOT NULL DEFAULT 'new',
+      name VARCHAR(255) NOT NULL,
+      phone VARCHAR(64) NULL,
+      email VARCHAR(255) NULL,
+      subject VARCHAR(255) NULL,
+      message TEXT NOT NULL,
+      source VARCHAR(64) NOT NULL DEFAULT 'website'
+    )
+  `);
+}
+
+async function getDbPool() {
+  if (!hasDatabaseConfig) {
+    return null;
+  }
+
+  if (!dbPoolPromise) {
+    dbPoolPromise = (async () => {
+      const mysql = await import("mysql2/promise");
+      const pool = databaseUrl
+        ? mysql.createPool(databaseUrl)
+        : mysql.createPool({
+            host: dbConfig.host,
+            port: dbConfig.port,
+            user: dbConfig.user,
+            password: dbConfig.password,
+            database: dbConfig.database,
+            waitForConnections: true,
+            connectionLimit: 10,
+            queueLimit: 0
+          });
+
+      await initializeDatabase(pool);
+      return pool;
+    })();
+  }
+
+  return dbPoolPromise;
 }
 
 async function readJsonBody(req) {
@@ -67,7 +146,64 @@ function cleanBooking(input) {
   return booking;
 }
 
+function cleanEnquiry(input) {
+  const enquiry = {
+    name: String(input.name || "").trim(),
+    phone: String(input.phone || "").trim(),
+    email: String(input.email || "").trim(),
+    subject: String(input.subject || "Website enquiry").trim(),
+    message: String(input.message || input.notes || "").trim()
+  };
+
+  if (!enquiry.name || !enquiry.message) {
+    throw new Error("Name and message are required");
+  }
+
+  if (!enquiry.phone && !enquiry.email) {
+    throw new Error("Phone or email is required");
+  }
+
+  return enquiry;
+}
+
+function createReference(prefix) {
+  return `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+}
+
 async function saveBooking(booking) {
+  const record = {
+    id: createReference("NBC"),
+    createdAt: new Date().toISOString(),
+    status: "new",
+    ...booking
+  };
+
+  const pool = await getDbPool();
+  if (pool) {
+    await pool.execute(
+      `INSERT INTO bookings
+        (id, created_at, status, festival, plan, retail_rate, arrival_date, nights, guests, food, name, phone, notes, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        record.id,
+        record.createdAt.slice(0, 19).replace("T", " "),
+        record.status,
+        record.festival,
+        record.plan,
+        record.retailRate,
+        record.arrivalDate || null,
+        record.nights,
+        record.guests,
+        record.food,
+        record.name,
+        record.phone,
+        record.notes || null,
+        "website"
+      ]
+    );
+    return record;
+  }
+
   await mkdir(dirname(bookingsFile), { recursive: true });
 
   let bookings = [];
@@ -77,15 +213,40 @@ async function saveBooking(booking) {
     bookings = [];
   }
 
-  const record = {
-    id: `NBC-${Date.now().toString(36).toUpperCase()}`,
-    createdAt: new Date().toISOString(),
-    status: "new",
-    ...booking
-  };
-
   bookings.push(record);
   await writeFile(bookingsFile, `${JSON.stringify(bookings, null, 2)}\n`);
+  return record;
+}
+
+async function saveEnquiry(enquiry) {
+  const record = {
+    id: createReference("NBE"),
+    createdAt: new Date().toISOString(),
+    status: "new",
+    ...enquiry
+  };
+
+  const pool = await getDbPool();
+  if (pool) {
+    await pool.execute(
+      `INSERT INTO enquiries
+        (id, created_at, status, name, phone, email, subject, message, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        record.id,
+        record.createdAt.slice(0, 19).replace("T", " "),
+        record.status,
+        record.name,
+        record.phone || null,
+        record.email || null,
+        record.subject || null,
+        record.message,
+        "website"
+      ]
+    );
+    return record;
+  }
+
   return record;
 }
 
@@ -111,15 +272,45 @@ async function serveStatic(req, res) {
 }
 
 const server = createServer(async (req, res) => {
-  if (req.method === "GET" && req.url === "/healthz") {
-    sendJson(res, 200, { ok: true, service: "northeast-basecamp-site" });
+  const requestUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+
+  if (req.method === "GET" && (requestUrl.pathname === "/healthz" || requestUrl.pathname === "/health")) {
+    const payload = { ok: true, service: "northeast-basecamp-site", storage: hasDatabaseConfig ? "mysql" : "json" };
+
+    if (requestUrl.searchParams.get("db") === "1") {
+      try {
+        const pool = await getDbPool();
+        if (pool) {
+          await pool.query("SELECT 1");
+          payload.database = "ok";
+        } else {
+          payload.database = "not_configured";
+        }
+      } catch (error) {
+        sendJson(res, 500, { ok: false, service: "northeast-basecamp-site", storage: "mysql", database: "error", message: error.message });
+        return;
+      }
+    }
+
+    sendJson(res, 200, payload);
     return;
   }
 
-  if (req.method === "POST" && req.url === "/api/bookings") {
+  if (req.method === "POST" && requestUrl.pathname === "/api/bookings") {
     try {
       const booking = cleanBooking(await readJsonBody(req));
       const record = await saveBooking(booking);
+      sendJson(res, 201, { ok: true, reference: record.id });
+    } catch (error) {
+      sendJson(res, 400, { ok: false, message: error.message });
+    }
+    return;
+  }
+
+  if (req.method === "POST" && requestUrl.pathname === "/api/enquiries") {
+    try {
+      const enquiry = cleanEnquiry(await readJsonBody(req));
+      const record = await saveEnquiry(enquiry);
       sendJson(res, 201, { ok: true, reference: record.id });
     } catch (error) {
       sendJson(res, 400, { ok: false, message: error.message });
@@ -136,11 +327,19 @@ const server = createServer(async (req, res) => {
   res.end("Method not allowed");
 });
 
+server.on("clientError", (error, socket) => {
+  console.warn("Rejected malformed request", error.message);
+  socket.end("HTTP/1.1 400 Bad Request\\r\\n\\r\\n");
+});
+
 server.on("error", (error) => {
   console.error(`Northeast Basecamp server failed to start on ${host}:${port}`, error);
   process.exit(1);
 });
 
+server.keepAliveTimeout = 65_000;
+server.headersTimeout = 66_000;
+
 server.listen(port, host, () => {
-  console.log(`Northeast Basecamp site running at http://${host}:${port}`);
+  console.log(`Northeast Basecamp site listening on ${host}:${port}`);
 });

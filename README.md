@@ -25,13 +25,36 @@ The app uses `process.env.PORT` when available, otherwise it runs on port `3000`
 4. Entry file: `server.js`.
 5. Build command: `npm run build`.
 6. Startup command: `npm start`.
-7. Use Node.js 18 or newer.
+7. Use Node.js 20 or newer (Node.js 18 also works).
 8. Keep `data/` writable so booking requests can be stored in `data/bookings.json`.
 9. Point the domain to the Node.js app, not only to static hosting, because bookings use `/api/bookings`.
 
+Leave `PORT` unset in hPanel. Hostinger supplies the port to the application; the server reads it automatically and defaults to `3000` when it is not supplied. Do not run `npm start` in the build-command field, as this launches a second server during the build and produces the `EADDRINUSE` error.
+
 If Hostinger shows `EADDRINUSE: address already in use :::3000`, check that `npm start` is not entered as the build command. `npm start` launches the long-running server and should only be used as the startup command.
 
-No external npm packages are required.
+The only runtime dependency is `mysql2`, used for Hostinger MySQL booking storage.
+
+## Hostinger MySQL Database
+
+The app stores booking requests in MySQL when database environment variables are present. Without these variables, it falls back to local JSON storage for development.
+
+Set these environment variables in Hostinger:
+
+```bash
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=u644575138_admin
+DB_PASSWORD=your_database_password
+DB_NAME=u644575138_Northeastbase
+NODE_ENV=production
+```
+
+Do not commit the real password to GitHub. Use Hostinger's Environment Variables screen or import a private `.env` file during deployment.
+
+The app can create the required tables automatically on first database use. You can also run `database.sql` manually in phpMyAdmin to create `bookings` and `enquiries` ahead of time.
+
+After deployment, visit `/health` or `/healthz`. It should return JSON and show `storage: "mysql"` when the database variables are configured. Visit `/healthz?db=1` to force a database connection check.
 
 ## Contact
 
