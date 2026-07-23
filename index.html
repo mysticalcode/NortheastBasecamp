@@ -787,6 +787,23 @@
           <button class="button primary submit" type="submit">Send booking request</button>
           <p class="form-note" id="bookingNote">Every booking request receives an itemised invoice. Dinner is optional and costs INR 400 per guest per night.</p>
         </form>
+        <dialog class="invoice-dialog" id="invoiceDialog" aria-labelledby="invoiceDialogTitle">
+          <div class="invoice-dialog-inner">
+            <div class="invoice-dialog-header">
+              <div><p class="eyebrow">Booking confirmed</p><h3 id="invoiceDialogTitle">Excited to host you</h3><p class="invoice-reference" id="invoiceDialogReference"></p></div>
+              <button class="invoice-close" type="button" aria-label="Close invoice" data-close-invoice>&times;</button>
+            </div>
+            <div class="invoice-welcome">
+              <span class="invoice-welcome-icon" aria-hidden="true">✓</span>
+              <div><strong>Your Ziro stay is taking shape.</strong><p>We&apos;re excited to host you. Soon, you&apos;ll receive a personalized invitation on WhatsApp with the next steps for your Basecamp stay.</p></div>
+            </div>
+            <iframe id="invoiceFrame" title="Booking invoice"></iframe>
+            <div class="invoice-dialog-actions">
+              <a class="button primary" id="invoiceDownload" href="#" target="_blank" rel="noopener">Open / download invoice</a>
+              <button class="button ghost-dark" type="button" data-close-invoice>Close</button>
+            </div>
+          </div>
+        </dialog>
       </section>
     </main>
 

@@ -1468,6 +1468,129 @@ textarea:focus {
   font-weight: 900;
 }
 
+.invoice-dialog {
+  background: transparent;
+  border: 0;
+  max-height: min(860px, calc(100vh - 32px));
+  max-width: min(900px, calc(100vw - 28px));
+  padding: 0;
+  width: 900px;
+}
+
+.invoice-dialog::backdrop {
+  background: rgba(4, 27, 20, 0.78);
+  backdrop-filter: blur(5px);
+}
+
+.invoice-dialog-inner {
+  background: var(--cream);
+  border: 1px solid rgba(247, 194, 26, 0.48);
+  border-radius: 18px;
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.invoice-dialog-header {
+  align-items: center;
+  background: linear-gradient(135deg, var(--forest), var(--leaf));
+  color: var(--cream);
+  display: flex;
+  justify-content: space-between;
+  padding: 19px 22px;
+}
+
+.invoice-dialog-header .eyebrow {
+  color: var(--coral);
+  margin: 0 0 4px;
+}
+
+.invoice-dialog-header h3 {
+  color: var(--cream);
+  margin: 0;
+}
+
+.invoice-reference {
+  color: rgba(255, 253, 247, 0.72);
+  font-size: 13px;
+  font-weight: 700;
+  margin: 5px 0 0;
+}
+
+.invoice-close {
+  align-items: center;
+  background: rgba(255, 253, 247, 0.14);
+  border: 1px solid rgba(255, 253, 247, 0.26);
+  border-radius: 50%;
+  color: var(--cream);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 29px;
+  height: 38px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0 0 4px;
+  width: 38px;
+}
+
+.invoice-welcome {
+  align-items: center;
+  background: linear-gradient(135deg, rgba(247, 194, 26, 0.18), rgba(255, 165, 101, 0.14));
+  border-bottom: 1px solid rgba(6, 75, 55, 0.12);
+  display: flex;
+  gap: 14px;
+  padding: 17px 22px;
+}
+
+.invoice-welcome-icon {
+  align-items: center;
+  background: var(--forest);
+  border-radius: 50%;
+  color: var(--sun);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 18px;
+  font-weight: 900;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+
+.invoice-welcome strong {
+  color: var(--forest);
+  display: block;
+  font-size: 15px;
+}
+
+.invoice-welcome p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+  margin: 3px 0 0;
+}
+
+.invoice-dialog iframe {
+  background: var(--paper);
+  border: 0;
+  display: block;
+  height: min(620px, calc(100vh - 220px));
+  width: 100%;
+}
+
+.invoice-dialog-actions {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 16px 22px;
+}
+
+.ghost-dark {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--forest);
+  padding: 12px 18px;
+}
+
 .site-footer {
   background: #0a3025;
   border-top: 1px solid rgba(247, 194, 26, 0.65);

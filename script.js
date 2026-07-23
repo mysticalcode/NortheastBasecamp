@@ -5,6 +5,11 @@ const bookingForm = document.querySelector("#bookingForm");
 const summary = document.querySelector("#bookingSummary");
 const menuToggle = document.querySelector("[data-menu-toggle]");
 const primaryNavigation = document.querySelector("#primary-navigation");
+const invoiceDialog = document.querySelector("#invoiceDialog");
+const invoiceFrame = document.querySelector("#invoiceFrame");
+const invoiceDownload = document.querySelector("#invoiceDownload");
+const invoiceDialogTitle = document.querySelector("#invoiceDialogTitle");
+const invoiceDialogReference = document.querySelector("#invoiceDialogReference");
 const dinnerRatePerGuestNight = 400;
 
 function formatInr(amount) {
@@ -17,6 +22,23 @@ function setMenuOpen(isOpen) {
   menuToggle.setAttribute("aria-label", isOpen ? "Close navigation menu" : "Open navigation menu");
   header.classList.toggle("is-menu-open", isOpen);
 }
+
+function showInvoice(invoiceUrl, reference) {
+  if (!invoiceDialog || !invoiceFrame || !invoiceDownload || !invoiceDialogTitle || !invoiceDialogReference) {
+    window.open(invoiceUrl, "_blank", "noopener");
+    return;
+  }
+
+  invoiceDialogTitle.textContent = "Excited to host you";
+  invoiceDialogReference.textContent = `Booking reference: ${reference}`;
+  invoiceFrame.src = invoiceUrl;
+  invoiceDownload.href = invoiceUrl;
+  if (!invoiceDialog.open) invoiceDialog.showModal();
+}
+
+document.querySelectorAll("[data-close-invoice]").forEach((button) => {
+  button.addEventListener("click", () => invoiceDialog?.close());
+});
 
 if (menuToggle && primaryNavigation) {
   menuToggle.addEventListener("click", () => {
@@ -117,13 +139,14 @@ if (bookingForm) {
   bookingForm.addEventListener("change", updateSummary);
   bookingForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const form = event.currentTarget;
   const note = document.querySelector("#bookingNote");
   if (window.location.protocol === "file:") {
     note.textContent = "Bookings need the website server. Open this site through its deployed URL or run it from http://localhost:3000 instead of opening index.html directly.";
     return;
   }
-  const data = new FormData(event.currentTarget);
-  const submitButton = event.currentTarget.querySelector(".submit");
+  const data = new FormData(form);
+  const submitButton = form.querySelector(".submit");
   const booking = {
     plan: data.get("plan"),
     arrivalDate: data.get("arrivalDate"),
@@ -158,7 +181,8 @@ if (bookingForm) {
     invoiceLink.target = "_blank";
     invoiceLink.rel = "noopener";
     note.append(invoiceLink, ". Our team will contact you shortly to confirm availability.");
-    event.currentTarget.reset();
+    showInvoice(result.invoiceUrl, result.reference);
+    form.reset();
     document.querySelector("#plan").value = booking.plan;
     document.querySelector("#guests").value = booking.guests;
     document.querySelector("#arrivalDate").value = booking.arrivalDate;
