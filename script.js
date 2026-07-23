@@ -161,6 +161,7 @@ if (bookingForm) {
   submitButton.textContent = "Saving request...";
   note.textContent = "Saving your booking request securely...";
 
+  let result;
   try {
     const response = await fetch("/api/bookings", {
       method: "POST",
@@ -169,11 +170,20 @@ if (bookingForm) {
     });
 
     const responseType = response.headers.get("content-type") || "";
-    const result = responseType.includes("application/json") ? await response.json() : {};
+    result = responseType.includes("application/json") ? await response.json() : {};
     if (!response.ok) {
       throw new Error(result.message || `Booking service is unavailable (HTTP ${response.status}). Please try again shortly.`);
     }
+  } catch (error) {
+    note.textContent = error instanceof TypeError
+      ? "The booking service is unavailable right now. Please try again in a few minutes."
+      : error.message || "We could not save your booking request. Please try again after a moment.";
+    submitButton.disabled = false;
+    submitButton.textContent = "Send booking request";
+    return;
+  }
 
+  try {
     note.replaceChildren(`Booking request saved. Reference: ${result.reference}. `);
     const invoiceLink = document.createElement("a");
     invoiceLink.href = result.invoiceUrl;
@@ -189,9 +199,7 @@ if (bookingForm) {
     document.querySelector("#nights").value = String(booking.nights);
     updateSummary();
   } catch (error) {
-    note.textContent = error instanceof TypeError
-      ? "The booking service is unavailable right now. Please try again in a few minutes."
-      : error.message || "We could not save your booking request. Please try again after a moment.";
+    note.append(" Your booking has been saved; use the invoice link above if the preview does not open.");
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = "Send booking request";
