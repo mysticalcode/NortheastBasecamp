@@ -3,6 +3,35 @@ const header = document.querySelector("[data-header]");
 const heroImage = document.querySelector("[data-parallax]");
 const bookingForm = document.querySelector("#bookingForm");
 const summary = document.querySelector("#bookingSummary");
+const menuToggle = document.querySelector("[data-menu-toggle]");
+const primaryNavigation = document.querySelector("#primary-navigation");
+
+function setMenuOpen(isOpen) {
+  if (!menuToggle || !primaryNavigation) return;
+  menuToggle.setAttribute("aria-expanded", String(isOpen));
+  menuToggle.setAttribute("aria-label", isOpen ? "Close navigation menu" : "Open navigation menu");
+  header.classList.toggle("is-menu-open", isOpen);
+}
+
+if (menuToggle && primaryNavigation) {
+  menuToggle.addEventListener("click", () => {
+    setMenuOpen(menuToggle.getAttribute("aria-expanded") !== "true");
+  });
+
+  primaryNavigation.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", () => setMenuOpen(false));
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setMenuOpen(false);
+  });
+
+  document.addEventListener("click", (event) => {
+    if (header.classList.contains("is-menu-open") && !header.contains(event.target)) {
+      setMenuOpen(false);
+    }
+  });
+}
 
 const observer = new IntersectionObserver(
   (entries) => {
@@ -110,3 +139,7 @@ bookingForm.addEventListener("submit", async (event) => {
 updateHeader();
 updateParallax();
 updateSummary();
+
+if (window.lucide) {
+  window.lucide.createIcons({ attrs: { "stroke-width": 1.8 } });
+}

@@ -139,7 +139,7 @@
         <span class="brand-mark"><img src="assets/nbc-logo.png" alt=""></span>
         <span>Northeast Basecamp</span>
       </a>
-      <nav class="desktop-nav" aria-label="Primary navigation">
+      <nav class="desktop-nav" id="primary-navigation" aria-label="Primary navigation">
         <a href="#stays">Stays</a>
         <a href="#routes">Itinerary</a>
         <a href="#experience">Experience</a>
@@ -149,6 +149,9 @@
         <a href="#festivals">Festivals</a>
         <a href="#about">About</a>
       </nav>
+      <button class="mobile-menu-toggle" type="button" aria-label="Open navigation menu" aria-controls="primary-navigation" aria-expanded="false" data-menu-toggle>
+        <span></span><span></span><span></span>
+      </button>
       <a class="nav-book" href="#book">Book Ziro</a>
     </header>
 
@@ -820,18 +823,50 @@
 
     <a class="mobile-book" href="#book">Book Ziro campsite</a>
 
-    <footer class="footer">
-      <div>
-        <strong>Northeast Basecamp</strong>
-        <img class="footer-logo" src="assets/nbc-logo.png" alt="Northeast Basecamp logo">
-        <p>Premium campsites for music festivals across Northeast India.</p>
-        <p><a href="mailto:sales@northeastbasecamp.com">sales@northeastbasecamp.com</a></p>
-        <p><a href="tel:+919678980213">+91 96789 80213</a> / <a href="tel:+918719962147">+91 87199 62147</a> / <a href="tel:+918822914698">+91 88229 14698</a></p>
-        <p><a href="https://www.instagram.com/northeast_basecamp?igsh=MWczYzZrMG9tNmd1cA==" target="_blank" rel="noopener">Instagram @northeast_basecamp</a></p>
+    <footer class="site-footer">
+      <div class="footer-main">
+        <section class="footer-brand-block" aria-label="Northeast Basecamp">
+          <img class="footer-logo" src="assets/nbc-logo.png" alt="Northeast Basecamp logo">
+          <p class="footer-kicker">Northeast Basecamp</p>
+          <p class="footer-motto">Stay comfy. Explore deeply. Celebrate fully.</p>
+          <p class="footer-copy">Premium festival stays, local experiences and shared stories across Northeast India.</p>
+          <a class="footer-cta" href="#book">Plan your Ziro stay <span aria-hidden="true">→</span></a>
+        </section>
+        <nav class="footer-nav" aria-label="Footer navigation">
+          <p class="footer-title">Explore</p>
+          <a href="#stays">Tent stays</a>
+          <a href="#routes">Ziro itineraries</a>
+          <a href="#experience">Basecamp experience</a>
+          <a href="#photos">Photo stories</a>
+          <a href="#book">Book Ziro</a>
+        </nav>
+        <section class="footer-contact" aria-label="Contact Northeast Basecamp">
+          <p class="footer-title">Talk to us</p>
+          <div class="footer-contact-row">
+            <a class="footer-icon" href="mailto:sales@northeastbasecamp.com" aria-label="Email Northeast Basecamp" data-tooltip="Email us"><i data-lucide="mail"></i></a>
+            <a href="mailto:sales@northeastbasecamp.com">sales@northeastbasecamp.com</a>
+          </div>
+          <div class="footer-contact-row">
+            <a class="footer-icon" href="tel:+919678980213" aria-label="Call Northeast Basecamp" data-tooltip="Call us"><i data-lucide="phone"></i></a>
+            <span><a href="tel:+919678980213">+91 96789 80213</a><a href="tel:+918719962147">+91 87199 62147</a><a href="tel:+918822914698">+91 88229 14698</a></span>
+          </div>
+          <div class="footer-contact-row">
+            <a class="footer-icon" href="https://www.instagram.com/northeast_basecamp?igsh=MWczYzZrMG9tNmd1cA==" target="_blank" rel="noopener" aria-label="Open Northeast Basecamp Instagram" data-tooltip="Instagram"><i data-lucide="instagram"></i></a>
+            <a href="https://www.instagram.com/northeast_basecamp?igsh=MWczYzZrMG9tNmd1cA==" target="_blank" rel="noopener">@northeast_basecamp</a>
+          </div>
+        </section>
       </div>
-      <a href="#book">Book Ziro camp</a>
+      <div class="footer-bottom">
+        <p>Established 2026. Made for the long way to the good part.</p>
+        <nav class="footer-policies" aria-label="Legal policies">
+          <a href="privacy.html">Privacy policy</a>
+          <a href="terms.html">Terms and conditions</a>
+          <a href="cancellation.html">Cancellation policy</a>
+        </nav>
+      </div>
     </footer>
 
-    <script src="script.js"></script>
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
+    <script src="script.js" defer></script>
   </body>
 </html>
