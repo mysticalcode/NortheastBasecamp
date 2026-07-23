@@ -117,9 +117,13 @@ if (bookingForm) {
   bookingForm.addEventListener("change", updateSummary);
   bookingForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const note = document.querySelector("#bookingNote");
+  if (window.location.protocol === "file:") {
+    note.textContent = "Bookings need the website server. Open this site through its deployed URL or run it from http://localhost:3000 instead of opening index.html directly.";
+    return;
+  }
   const data = new FormData(event.currentTarget);
   const submitButton = event.currentTarget.querySelector(".submit");
-  const note = document.querySelector("#bookingNote");
   const booking = {
     plan: data.get("plan"),
     arrivalDate: data.get("arrivalDate"),
