@@ -64,16 +64,22 @@ function updateParallax() {
 
 function updateSummary() {
   const planSelect = document.querySelector("#plan");
-  const selectedPlan = planSelect.selectedOptions[0];
-  const plan = planSelect.value;
-  const arrivalDate = document.querySelector("#arrivalDate").value;
+  const arrivalDateInput = document.querySelector("#arrivalDate");
   const nightsInput = document.querySelector("#nights");
+  const guestsInput = document.querySelector("#guests");
+  const dinnerSelect = document.querySelector("#dinnerIncluded");
+  if (!summary || !planSelect || !arrivalDateInput || !nightsInput || !guestsInput) return;
+
+  const selectedPlan = planSelect.selectedOptions[0];
+  if (!selectedPlan) return;
+  const plan = planSelect.value;
+  const arrivalDate = arrivalDateInput.value;
   const fixedNights = Number(selectedPlan.dataset.fixedNights || 0);
   if (fixedNights) nightsInput.value = String(fixedNights);
   nightsInput.disabled = Boolean(fixedNights);
   const nights = Number(nightsInput.value);
-  const guests = document.querySelector("#guests").value;
-  const dinnerIncluded = document.querySelector("#dinnerIncluded").value === "true";
+  const guests = guestsInput.value;
+  const dinnerIncluded = dinnerSelect?.value === "true";
   const baseRate = Number(selectedPlan.dataset.rate);
   const baseAmount = baseRate * Number(guests) * (selectedPlan.dataset.rateType === "night" ? nights : 1);
   const dinnerAmount = dinnerIncluded ? dinnerRatePerGuestNight * Number(guests) * nights : 0;
@@ -89,20 +95,27 @@ window.addEventListener("scroll", () => {
   updateParallax();
 });
 
-document.querySelectorAll(".book-card").forEach((button) => {
-  button.addEventListener("click", () => {
-    const planSelect = document.querySelector("#plan");
-    planSelect.value = button.dataset.plan;
-    document.querySelector("#guests").value = button.dataset.guests;
-    document.querySelector("#nights").value = button.dataset.nights || "4";
-    updateSummary();
-    document.querySelector("#book").scrollIntoView({ behavior: "smooth" });
+if (bookingForm) {
+  document.querySelectorAll(".book-card").forEach((button) => {
+    button.addEventListener("click", () => {
+      const planSelect = document.querySelector("#plan");
+      const guestsInput = document.querySelector("#guests");
+      const nightsInput = document.querySelector("#nights");
+      const bookingSection = document.querySelector("#book");
+      if (!planSelect || !guestsInput || !nightsInput || !bookingSection) return;
+      planSelect.value = button.dataset.plan;
+      guestsInput.value = button.dataset.guests;
+      nightsInput.value = button.dataset.nights || "4";
+      updateSummary();
+      bookingSection.scrollIntoView({ behavior: "smooth" });
+    });
   });
-});
+}
 
-bookingForm.addEventListener("input", updateSummary);
-bookingForm.addEventListener("change", updateSummary);
-bookingForm.addEventListener("submit", async (event) => {
+if (bookingForm) {
+  bookingForm.addEventListener("input", updateSummary);
+  bookingForm.addEventListener("change", updateSummary);
+  bookingForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const data = new FormData(event.currentTarget);
   const submitButton = event.currentTarget.querySelector(".submit");
@@ -155,11 +168,12 @@ bookingForm.addEventListener("submit", async (event) => {
     submitButton.disabled = false;
     submitButton.textContent = "Send booking request";
   }
-});
+  });
+}
 
 updateHeader();
 updateParallax();
-updateSummary();
+if (bookingForm) updateSummary();
 
 if (window.lucide) {
   window.lucide.createIcons({ attrs: { "stroke-width": 1.8 } });

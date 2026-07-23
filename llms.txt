@@ -4,7 +4,7 @@ Northeast Basecamp is a premium festival campsite and travel-support brand for N
 
 ## Primary Offering
 
-Book retail Ziro Festival 2026 tent stays, a 5N/6D Ex Guwahati journey, or a shorter 4N/5D Ex Naharlagun journey through https://northeastbasecamp.com/.
+Book Ziro Festival 2026 tent stays, a 5N/6D Ex Guwahati journey, or a shorter 4N/5D Ex Naharlagun journey through https://northeastbasecamp.com/.
 
 ## Event
 
@@ -12,7 +12,7 @@ Book retail Ziro Festival 2026 tent stays, a 5N/6D Ex Guwahati journey, or a sho
 - Location: Ziro Valley, Arunachal Pradesh, India
 - Festival pass: not included by default unless added in writing
 
-## Retail Stay Packages
+## Stay Packages
 
 - Dome Tent - 3 Sharing: INR 2,000 / person / night
 - Dome Tent - 2 Sharing: INR 2,200 / person / night
@@ -24,7 +24,7 @@ Book retail Ziro Festival 2026 tent stays, a 5N/6D Ex Guwahati journey, or a sho
 
 Stay-only guests can request 1, 2, 3, 4 or 5 nights, subject to availability.
 
-## Retail Transport Packages
+## Transport Packages
 
 - Ex Guwahati - Traveller: INR 18,000 / person
 - Ex Guwahati - Urbania: INR 22,000 / person
@@ -35,7 +35,7 @@ The Ex Guwahati plan includes a full road-travel day and five campsite nights. T
 
 ## Standard Stay Inclusions
 
-Allocated tent category, clean bedsheet and pillow, daily breakfast, clean shared washrooms, basic charging access, check-in support, festival guidance, campsite community zone subject to permissions, responsible-stay rules.
+Allocated tent category, clean bedsheet and pillow, daily breakfast, clean concrete washrooms cleaned three times daily, basic charging access, check-in support, festival guidance, campsite community zone subject to permissions, responsible-stay rules.
 
 ## Standard Exclusions
 
@@ -43,7 +43,7 @@ Festival entry pass, flights/trains to pickup point, lunch, dinner unless added,
 
 ## Booking Flow
 
-Users click a package card, the booking form prefills package, retail rate, guests and nights, then the user adds contact details and submits. The backend stores the booking request with a generated reference.
+Users click a package card, the booking form prefills the package, guests and nights, then the user adds contact details and submits. The backend stores the booking request with a generated reference and invoice.
 
 ## Common Booking Questions
 
@@ -51,7 +51,7 @@ Users click a package card, the booking form prefills package, retail rate, gues
 - Ziro Festival passes are not included by default.
 - Ex Guwahati is the longer 5N/6D plan because Guwahati to Naharlagun/Arunachal takes a full travel day before reaching Ziro.
 - Ex Naharlagun is the shorter 4N/5D plan for guests already reaching Naharlagun/Itanagar.
-- The campsite is outdoors in Ziro Valley, so guests should expect cool nights, rain-ready packing, shared washrooms and festival-ground conditions.
+- The campsite is outdoors in Ziro Valley, so guests should expect cool nights, rain-ready packing, concrete shared washrooms and festival-ground conditions.
 - ILP support and transfer guidance can be requested during booking.
 
 ## Brand Story
@@ -66,9 +66,17 @@ Inside Basecamp includes DJ nights and afterparties, live tattoo studio, custom 
 
 Beyond the campsite includes sunrise trek, community fishing, festival pickup/drop, intercity pickup from Guwahati, Ex Naharlagun/Itanagar transfers, local sightseeing, Apatani village tour, local tribe market and Naara Aaba winery tour add-on.
 
+## Northeast India Festival Coverage
+
+Northeast Basecamp begins with Ziro Music Festival 2026 in Arunachal Pradesh and publishes practical travel guidance for major Northeast India festival journeys, including Hornbill Festival in Nagaland, Shillong Cherry Blossom Festival in Meghalaya and Orange Festival of Adventure in Dambuk, Arunachal Pradesh. Future festival-specific stays are subject to availability and published confirmation.
+
+## Local Culture
+
+Ziro Valley is home to the Apatani people and the Apatani Cultural Landscape. Cultural activities are optional, permission-led and designed around local guidance, village customs and photography rules. The website uses culture-specific imagery for the local market, Apatani village landscape and winery visit. It retains one community-fishing image to describe the seasonal paddy-and-fish experience.
+
 ## Photo Library
 
-The website includes an All Photos section with real Northeast Basecamp campsite images, Ziro paddy field walks, local fishing activity photos, night camp scenes, tent rows, hammocks, guest spaces and a short Basecamp reel.
+The website includes an All Photos section with real Northeast Basecamp campsite images, Ziro paddy field walks, one community-fishing image, night camp scenes, tent rows, hammocks, guest spaces and a short Basecamp reel. Photos mentioning Northeast Hikers are excluded.
 
 ## Contact
 
