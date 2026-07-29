@@ -12,6 +12,8 @@ function getPort(value) {
 const port = getPort(process.env.PORT);
 const host = process.env.HOST || "0.0.0.0";
 const bookingsFile = join(__dirname, "data", "bookings.json");
+const contestEntriesFile = join(__dirname, "data", "contest-entries.json");
+const luckyEntriesFile = join(__dirname, "data", "lucky-entries.json");
 const invoicesDirectory = join(__dirname, "data", "invoices");
 const ziroFestival = "Ziro Music Festival 2026";
 const dinnerRatePerGuestNight = 400;
@@ -112,6 +114,30 @@ async function initializeDatabase(pool) {
       email VARCHAR(255) NULL,
       subject VARCHAR(255) NULL,
       message TEXT NOT NULL,
+      source VARCHAR(64) NOT NULL DEFAULT 'website'
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS contest_entries (
+      id VARCHAR(40) PRIMARY KEY,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      status VARCHAR(32) NOT NULL DEFAULT 'new',
+      instagram_url VARCHAR(1000) NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      phone VARCHAR(64) NOT NULL,
+      source VARCHAR(64) NOT NULL DEFAULT 'website'
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS lucky_entries (
+      id VARCHAR(40) PRIMARY KEY,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      status VARCHAR(32) NOT NULL DEFAULT 'new',
+      email VARCHAR(255) NOT NULL,
+      phone VARCHAR(64) NOT NULL,
+      booking_reference VARCHAR(40) NOT NULL,
       source VARCHAR(64) NOT NULL DEFAULT 'website'
     )
   `);
@@ -225,6 +251,60 @@ function cleanEnquiry(input) {
   }
 
   return enquiry;
+}
+
+function cleanEmail(value) {
+  const email = String(value || "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 255) {
+    throw new Error("Please enter a valid email address");
+  }
+  return email;
+}
+
+function cleanPhone(value) {
+  const phone = String(value || "").trim();
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 7 || digits.length > 15) {
+    throw new Error("Please enter a valid phone number");
+  }
+  return phone;
+}
+
+function cleanContestEntry(input) {
+  const instagramUrl = String(input.instagramUrl || "").trim();
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(instagramUrl);
+  } catch {
+    throw new Error("Please enter a valid Instagram reel or post link");
+  }
+
+  if (!/^https?:$/.test(parsedUrl.protocol) || !/(^|\.)instagram\.com$/i.test(parsedUrl.hostname)) {
+    throw new Error("Please submit a valid Instagram link");
+  }
+
+  if (input.confirmedSteps !== true && input.confirmedSteps !== "true") {
+    throw new Error("Please confirm that you followed, posted and tagged Northeast Basecamp");
+  }
+
+  return {
+    instagramUrl: parsedUrl.toString(),
+    email: cleanEmail(input.email),
+    phone: cleanPhone(input.phone)
+  };
+}
+
+function cleanLuckyEntry(input) {
+  const bookingReference = String(input.bookingReference || "").trim().toUpperCase();
+  if (!/^NBC-[A-Z0-9]+-[A-Z0-9]+$/.test(bookingReference)) {
+    throw new Error("Please enter the booking reference shown on your invoice");
+  }
+
+  return {
+    email: cleanEmail(input.email),
+    phone: cleanPhone(input.phone),
+    bookingReference
+  };
 }
 
 function createReference(prefix) {
@@ -354,6 +434,79 @@ async function saveBooking(booking) {
   return record;
 }
 
+async function appendLocalRecord(filePath, record) {
+  await mkdir(dirname(filePath), { recursive: true });
+  let records = [];
+  try {
+    records = JSON.parse(await readFile(filePath, "utf8"));
+  } catch {
+    records = [];
+  }
+  records.push(record);
+  await writeFile(filePath, `${JSON.stringify(records, null, 2)}\n`);
+}
+
+async function saveContestEntry(entry) {
+  const record = { id: createReference("NBCON"), createdAt: new Date().toISOString(), status: "new", ...entry };
+  try {
+    const pool = await getDbPool();
+    if (pool) {
+      await pool.execute(
+        `INSERT INTO contest_entries (id, created_at, status, instagram_url, email, phone, source)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [record.id, record.createdAt.slice(0, 19).replace("T", " "), record.status, record.instagramUrl, record.email, record.phone, "website-contest"]
+      );
+      return record;
+    }
+  } catch (error) {
+    console.error("MySQL contest storage failed; using local contest storage instead.", error.message);
+  }
+  await appendLocalRecord(contestEntriesFile, record);
+  return record;
+}
+
+async function bookingReferenceExists(bookingReference) {
+  try {
+    const pool = await getDbPool();
+    if (pool) {
+      const [rows] = await pool.execute("SELECT id FROM bookings WHERE id = ? LIMIT 1", [bookingReference]);
+      return rows.length > 0;
+    }
+  } catch (error) {
+    console.error("MySQL booking reference lookup failed; checking local booking storage instead.", error.message);
+  }
+
+  try {
+    const bookings = JSON.parse(await readFile(bookingsFile, "utf8"));
+    return bookings.some((booking) => booking.id === bookingReference);
+  } catch {
+    return false;
+  }
+}
+
+async function saveLuckyEntry(entry) {
+  if (!(await bookingReferenceExists(entry.bookingReference))) {
+    throw new Error("That booking reference was not found. Please use the reference shown on your invoice.");
+  }
+
+  const record = { id: createReference("NBLUCK"), createdAt: new Date().toISOString(), status: "new", ...entry };
+  try {
+    const pool = await getDbPool();
+    if (pool) {
+      await pool.execute(
+        `INSERT INTO lucky_entries (id, created_at, status, email, phone, booking_reference, source)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [record.id, record.createdAt.slice(0, 19).replace("T", " "), record.status, record.email, record.phone, record.bookingReference, "website-lucky-entry"]
+      );
+      return record;
+    }
+  } catch (error) {
+    console.error("MySQL lucky-entry storage failed; using local lucky-entry storage instead.", error.message);
+  }
+  await appendLocalRecord(luckyEntriesFile, record);
+  return record;
+}
+
 async function saveEnquiry(enquiry) {
   const record = {
     id: createReference("NBE"),
@@ -447,6 +600,26 @@ const server = createServer(async (req, res) => {
     try {
       const enquiry = cleanEnquiry(await readJsonBody(req));
       const record = await saveEnquiry(enquiry);
+      sendJson(res, 201, { ok: true, reference: record.id });
+    } catch (error) {
+      sendJson(res, 400, { ok: false, message: error.message });
+    }
+    return;
+  }
+
+  if (req.method === "POST" && requestUrl.pathname === "/api/contest-entries") {
+    try {
+      const record = await saveContestEntry(cleanContestEntry(await readJsonBody(req)));
+      sendJson(res, 201, { ok: true, reference: record.id });
+    } catch (error) {
+      sendJson(res, 400, { ok: false, message: error.message });
+    }
+    return;
+  }
+
+  if (req.method === "POST" && requestUrl.pathname === "/api/lucky-entries") {
+    try {
+      const record = await saveLuckyEntry(cleanLuckyEntry(await readJsonBody(req)));
       sendJson(res, 201, { ok: true, reference: record.id });
     } catch (error) {
       sendJson(res, 400, { ok: false, message: error.message });

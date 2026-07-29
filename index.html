@@ -17,7 +17,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=20260723-3">
+    <link rel="stylesheet" href="styles.css?v=20260729-1">
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -155,6 +155,7 @@
         <a href="#photos">Photos</a>
         <a href="#guide">Guide</a>
         <a href="#festivals">Festivals</a>
+        <a href="#offers">Offers</a>
         <a href="#about">About</a>
       </nav>
       <button class="mobile-menu-toggle" type="button" aria-label="Open navigation menu" aria-controls="primary-navigation" aria-expanded="false" data-menu-toggle>
@@ -175,6 +176,7 @@
           <p class="eyebrow">Ziro Music Festival camp - 24 to 27 September 2026</p>
           <h1>Northeast Basecamp</h1>
           <p class="hero-lede">Premium Ziro Festival camping for people who want the music, the valley, the after-hours energy, and a clean bed waiting close by.</p>
+          <p class="early-bird"><span>Early-bird offer</span> Enquire now on WhatsApp for the best available Ziro package offers.</p>
           <div class="hero-badges" aria-label="Basecamp highlights">
             <span>After-party nights</span>
             <span>Live tattoo artist</span>
@@ -183,14 +185,15 @@
           </div>
           <div class="hero-actions">
             <a class="button primary" href="#book">Book in 2 minutes</a>
+            <a class="button whatsapp-button" href="https://wa.me/918638726594?text=Hi%20Northeast%20Basecamp%2C%20I%20would%20like%20to%20enquire%20about%20the%20best%20Ziro%20Festival%20offers." target="_blank" rel="noopener">Enquire on WhatsApp</a>
             <a class="button ghost" href="#stays">See stays</a>
           </div>
         </div>
         <div class="quick-book reveal" aria-label="Quick booking summary">
           <span>Now taking enquiries</span>
           <strong>Ziro, Arunachal Pradesh</strong>
-          <small>Packages from INR 2,000 per person/night</small>
-          <a href="#book">Check availability</a>
+          <small>Early-bird offers available for a limited time</small>
+          <a href="https://wa.me/918638726594?text=Hi%20Northeast%20Basecamp%2C%20please%20share%20your%20best%20Ziro%20early-bird%20offers." target="_blank" rel="noopener">Enquire now for best offers</a>
         </div>
       </section>
 
@@ -723,6 +726,47 @@
         </div>
       </section>
 
+      <section class="section campaign-section" id="offers">
+        <div class="section-heading reveal">
+          <p class="eyebrow">Ziro giveaways and offers</p>
+          <h2>Turn your Ziro excitement into a chance to stay free.</h2>
+          <p>Need help choosing a package? Message us on WhatsApp for the best currently available offer, or join one of the two Ziro giveaway entries below.</p>
+          <a class="button whatsapp-button" href="https://wa.me/918638726594?text=Hi%20Northeast%20Basecamp%2C%20I%20would%20like%20to%20enquire%20about%20the%20best%20Ziro%20Festival%20offers." target="_blank" rel="noopener">Enquire now for best offers</a>
+        </div>
+        <div class="campaign-grid">
+          <article class="campaign-card contest-card">
+            <span class="campaign-kicker">Instagram video contest</span>
+            <h3>Two lucky winners stay free for the full Ziro Festival.</h3>
+            <ol class="campaign-steps">
+              <li>Follow <a href="https://www.instagram.com/northeast_basecamp?igsh=MWczYzZrMG9tNmd1cA==" target="_blank" rel="noopener">@northeast_basecamp</a> on Instagram.</li>
+              <li>Record a video showing how excited you are for Ziro.</li>
+              <li>Post it, tag Northeast Basecamp, then submit your Instagram link below.</li>
+            </ol>
+            <p class="campaign-highlight">Winner announcement: <strong>15 September 2026</strong>.</p>
+            <p class="campaign-exclusion">Prize covers the campsite stay only. Travel and Ziro Music Festival entry tickets are not included.</p>
+            <form class="campaign-form" id="contestForm">
+              <label>Instagram reel or post link<input type="url" name="instagramUrl" placeholder="https://www.instagram.com/reel/..." autocomplete="url" required></label>
+              <div class="form-row"><label>Email<input type="email" name="email" placeholder="you@example.com" autocomplete="email" required></label><label>Mobile number<input type="tel" name="phone" placeholder="+91 98765 43210" inputmode="tel" autocomplete="tel" pattern="[0-9+ \(\)\-]{7,20}" required></label></div>
+              <label class="consent"><input type="checkbox" name="confirmedSteps" value="true" required><span>I confirm I followed the page, posted my Ziro excitement video and tagged Northeast Basecamp.</span></label>
+              <button class="button primary submit" type="submit">Submit contest entry</button>
+              <p class="form-note" id="contestNote" aria-live="polite">Your entry will be checked before the winners are announced.</p>
+            </form>
+          </article>
+          <article class="campaign-card lucky-card">
+            <span class="campaign-kicker">Booked guests only</span>
+            <h3>Enter your booking for one lucky free guest stay.</h3>
+            <p>Already booked with Basecamp? Add your invoice booking reference to the lucky-entry list. One eligible winner can have one person&apos;s Basecamp stay made free after verification.</p>
+            <p class="campaign-exclusion">This lucky entry applies to the campsite stay only; travel and festival entry tickets remain excluded.</p>
+            <form class="campaign-form" id="luckyEntryForm">
+              <label>Booking reference<input type="text" name="bookingReference" placeholder="NBC-XXXXXXXX-XXXX" autocomplete="off" pattern="NBC\-[A-Za-z0-9]+\-[A-Za-z0-9]+" required></label>
+              <div class="form-row"><label>Email<input type="email" name="email" placeholder="you@example.com" autocomplete="email" required></label><label>Mobile number<input type="tel" name="phone" placeholder="+91 98765 43210" inputmode="tel" autocomplete="tel" pattern="[0-9+ \(\)\-]{7,20}" required></label></div>
+              <button class="button primary submit" type="submit">Join lucky-entry list</button>
+              <p class="form-note" id="luckyEntryNote" aria-live="polite">Your booking reference is checked before an entry is accepted.</p>
+            </form>
+          </article>
+        </div>
+      </section>
+
       <section class="section booking" id="book">
         <div class="booking-copy reveal">
           <p class="eyebrow">Fast booking</p>
@@ -853,6 +897,6 @@
     </footer>
 
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script src="script.js?v=20260723-3" defer></script>
+    <script src="script.js?v=20260729-1" defer></script>
   </body>
 </html>

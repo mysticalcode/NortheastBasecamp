@@ -1,5 +1,7 @@
 # Runtime data
 data/bookings.json
+data/contest-entries.json
+data/lucky-entries.json
 data/invoices/
 
 # Source/reference materials not required for deployment

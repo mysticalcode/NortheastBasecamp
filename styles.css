@@ -339,6 +339,26 @@ p {
   margin-top: 32px;
 }
 
+.early-bird {
+  align-items: center;
+  background: rgba(247, 194, 26, 0.16);
+  border: 1px solid rgba(247, 194, 26, 0.58);
+  border-radius: 999px;
+  color: var(--cream);
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 700;
+  gap: 9px;
+  margin: 20px 0 0;
+  padding: 9px 14px;
+}
+
+.early-bird span {
+  color: var(--sun);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .button {
   display: inline-flex;
   padding: 16px 22px;
@@ -348,6 +368,16 @@ p {
   background: rgba(255, 255, 255, 0.12);
   color: var(--cream);
   outline: 1px solid rgba(255, 255, 255, 0.34);
+}
+
+.whatsapp-button {
+  background: #1f9d5a;
+  box-shadow: 0 10px 28px rgba(12, 92, 48, 0.3);
+  color: #fff;
+}
+
+.whatsapp-button:hover {
+  background: #187d47;
 }
 
 .quick-book {
@@ -1361,6 +1391,123 @@ td:nth-child(2) {
   margin: 18px 0;
 }
 
+.campaign-section {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(247, 194, 26, 0.22), transparent 30%),
+    linear-gradient(145deg, #fff7e7, var(--paper));
+}
+
+.campaign-section .section-heading > .button {
+  margin-top: 18px;
+}
+
+.campaign-grid {
+  display: grid;
+  gap: 22px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 34px;
+}
+
+.campaign-card {
+  border: 1px solid rgba(6, 75, 55, 0.14);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: clamp(24px, 4vw, 40px);
+}
+
+.contest-card {
+  background: linear-gradient(145deg, var(--forest), var(--leaf) 62%, #0e3a2d);
+  color: var(--cream);
+}
+
+.lucky-card {
+  background: linear-gradient(145deg, #fffdf7, #fff1d0);
+}
+
+.campaign-kicker {
+  color: var(--coral);
+  display: block;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.campaign-card h3 {
+  font-size: clamp(31px, 3.2vw, 46px);
+  line-height: 0.98;
+  margin: 13px 0 18px;
+}
+
+.contest-card h3 {
+  color: var(--cream);
+}
+
+.campaign-card > p {
+  line-height: 1.65;
+}
+
+.contest-card > p,
+.contest-card .campaign-steps {
+  color: rgba(255, 253, 247, 0.83);
+}
+
+.campaign-steps {
+  display: grid;
+  gap: 12px;
+  line-height: 1.5;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.campaign-steps a {
+  color: var(--sun);
+  font-weight: 900;
+}
+
+.campaign-highlight {
+  background: rgba(247, 194, 26, 0.16);
+  border-left: 3px solid var(--sun);
+  border-radius: 0 8px 8px 0;
+  margin: 24px 0 12px;
+  padding: 12px 14px;
+}
+
+.campaign-exclusion {
+  font-size: 14px;
+  margin: 0 0 22px;
+}
+
+.campaign-form {
+  background: rgba(255, 253, 247, 0.94);
+  border-radius: 10px;
+  display: grid;
+  gap: 14px;
+  margin-top: 24px;
+  padding: 18px;
+}
+
+.campaign-form label {
+  text-align: left;
+}
+
+.consent {
+  align-items: flex-start;
+  color: var(--muted);
+  display: flex !important;
+  font-size: 13px !important;
+  line-height: 1.45;
+}
+
+.consent input {
+  accent-color: var(--leaf);
+  flex: 0 0 auto;
+  height: 18px;
+  margin: 1px 0 0;
+  padding: 0;
+  width: 18px;
+}
+
 .booking {
   background:
     linear-gradient(135deg, rgba(6, 75, 55, 0.96), rgba(11, 122, 85, 0.9) 42%, rgba(255, 165, 101, 0.92)),
@@ -1973,6 +2120,7 @@ textarea:focus {
   .promise-grid,
   .experience-grid,
   .culture-grid,
+  .campaign-grid,
   .beyond-list {
     grid-template-columns: 1fr;
   }
@@ -2119,6 +2267,20 @@ textarea:focus {
   .hero-actions .button {
     justify-content: center;
     width: 100%;
+  }
+
+  .early-bird {
+    align-items: flex-start;
+    border-radius: 12px;
+    line-height: 1.4;
+  }
+
+  .campaign-card {
+    padding: 24px 20px;
+  }
+
+  .campaign-form {
+    padding: 16px;
   }
 
   .quick-book {

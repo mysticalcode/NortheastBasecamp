@@ -207,6 +207,53 @@ if (bookingForm) {
   });
 }
 
+function setupCampaignForm(formId, endpoint, noteId, successMessage) {
+  const form = document.querySelector(formId);
+  const note = document.querySelector(noteId);
+  if (!form || !note) return;
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (window.location.protocol === "file:") {
+      note.textContent = "This form needs the website server. Open the deployed website or run it from http://localhost:3000.";
+      return;
+    }
+
+    const submissionForm = event.currentTarget;
+    const submitButton = submissionForm.querySelector(".submit");
+    const payload = Object.fromEntries(new FormData(submissionForm).entries());
+    if (formId === "#contestForm") payload.confirmedSteps = payload.confirmedSteps === "true";
+
+    submitButton.disabled = true;
+    submitButton.textContent = "Submitting...";
+    note.textContent = "Saving your entry...";
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const responseType = response.headers.get("content-type") || "";
+      const result = responseType.includes("application/json") ? await response.json() : {};
+      if (!response.ok) throw new Error(result.message || "We could not save your entry. Please try again.");
+
+      note.textContent = `${successMessage} Entry reference: ${result.reference}.`;
+      submissionForm.reset();
+    } catch (error) {
+      note.textContent = error instanceof TypeError
+        ? "The entry service is unavailable right now. Please try again in a few minutes."
+        : error.message || "We could not save your entry. Please try again.";
+    } finally {
+      submitButton.disabled = false;
+      submitButton.textContent = formId === "#contestForm" ? "Submit contest entry" : "Join lucky-entry list";
+    }
+  });
+}
+
+setupCampaignForm("#contestForm", "/api/contest-entries", "#contestNote", "Your contest entry is in. Good luck!");
+setupCampaignForm("#luckyEntryForm", "/api/lucky-entries", "#luckyEntryNote", "Your lucky entry is in. We will verify your booking reference.");
+
 updateHeader();
 updateParallax();
 if (bookingForm) updateSummary();
