@@ -339,26 +339,6 @@ p {
   margin-top: 32px;
 }
 
-.early-bird {
-  align-items: center;
-  background: rgba(247, 194, 26, 0.16);
-  border: 1px solid rgba(247, 194, 26, 0.58);
-  border-radius: 999px;
-  color: var(--cream);
-  display: inline-flex;
-  font-size: 14px;
-  font-weight: 700;
-  gap: 9px;
-  margin: 20px 0 0;
-  padding: 9px 14px;
-}
-
-.early-bird span {
-  color: var(--sun);
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
 .button {
   display: inline-flex;
   padding: 16px 22px;
@@ -2481,12 +2461,6 @@ textarea:focus {
   .hero-actions .button {
     justify-content: center;
     width: 100%;
-  }
-
-  .early-bird {
-    align-items: flex-start;
-    border-radius: 12px;
-    line-height: 1.4;
   }
 
   .campaign-card {
