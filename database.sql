@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS bookings (
   name VARCHAR(255) NOT NULL,
   phone VARCHAR(64) NOT NULL,
   invoice_path VARCHAR(255) NOT NULL,
+  invoice_data LONGBLOB NULL,
+  invoice_content_type VARCHAR(64) NULL,
   source VARCHAR(64) NOT NULL DEFAULT 'website'
 );
 

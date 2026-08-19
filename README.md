@@ -8,7 +8,7 @@ Premium Ziro Festival campsite website with a Node.js backend for booking reques
 - Backend: `server.js`
 - Booking endpoint: `POST /api/bookings`
 - Booking storage: MySQL in production; JSON is a local-development fallback only when no database is configured
-- Booking invoices: a PDF is generated for every request under `data/invoices/`
+- Booking invoices: each PDF is stored in MySQL with its booking record; `data/invoices/` is only used as a local-development fallback
 
 ## Local Run
 
@@ -27,7 +27,7 @@ The app uses `process.env.PORT` when available, otherwise it runs on port `3000`
 5. Build command: `npm run build`.
 6. Output directory: leave blank.
 7. Use Node.js 20 or newer (Node.js 18 also works).
-8. Keep `data/invoices/` writable so generated booking invoices can be stored. Booking requests themselves are stored in MySQL.
+8. Booking requests and invoice PDFs are stored in MySQL; no persistent local `data/` volume is required in production.
 9. Point the domain to the Node.js app, not only to static hosting, because bookings use `/api/bookings`.
 
 Hostinger starts the configured entry file automatically after the build. Leave `PORT` unset in hPanel: Hostinger supplies it to the application, and the server reads it automatically (falling back to `3000`). Do not enter `npm start` as the build command, as that launches a second server during the build and produces the `EADDRINUSE` error.
@@ -58,7 +58,7 @@ The app creates the required tables automatically on first database use. You can
 
 ### Preserving existing bookings
 
-`data/bookings.json` is not removed by this app. When it exists at the time of the first successful MySQL connection, the server copies its entries into the `bookings` table once, marks the import in `storage_migrations`, and leaves the JSON file untouched. Because runtime JSON data is intentionally excluded from Git, recover a missing hosted `data/bookings.json` from the hosting backup before the first successful database connection if it contains bookings that are not already in MySQL.
+`data/bookings.json` is not removed by this app. When it exists at the time of the first successful MySQL connection, the server copies its entries into the `bookings` table once, marks the import in `storage_migrations`, and leaves the JSON file untouched. Legacy PDFs present in `data/invoices/` are also copied into MySQL once. Because runtime JSON data and PDFs are intentionally excluded from Git, recover any missing hosted files from a hosting backup before the first successful database connection if they contain records that are not already in MySQL.
 
 After deployment, visit `/health` or `/healthz`. It should return JSON and show `storage: "mysql"` when the database variables are configured. Visit `/healthz?db=1` to force a database connection check.
 

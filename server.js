@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -89,6 +89,8 @@ async function initializeDatabase(pool) {
       name VARCHAR(255) NOT NULL,
       phone VARCHAR(64) NOT NULL,
       invoice_path VARCHAR(255) NOT NULL,
+      invoice_data LONGBLOB NULL,
+      invoice_content_type VARCHAR(64) NULL,
       source VARCHAR(64) NOT NULL DEFAULT 'website'
     )
   `);
@@ -106,7 +108,9 @@ async function initializeDatabase(pool) {
     ["base_amount", "INT NOT NULL DEFAULT 0"],
     ["dinner_amount", "INT NOT NULL DEFAULT 0"],
     ["total_amount", "INT NOT NULL DEFAULT 0"],
-    ["invoice_path", "VARCHAR(255) NULL"]
+    ["invoice_path", "VARCHAR(255) NULL"],
+    ["invoice_data", "LONGBLOB NULL"],
+    ["invoice_content_type", "VARCHAR(64) NULL"]
   ];
   for (const [name, definition] of requiredBookingColumns) {
     if (!bookingColumnNames.has(name)) {
@@ -239,6 +243,45 @@ async function migrateLegacyBookings(pool) {
   await pool.execute("INSERT INTO storage_migrations (name) VALUES (?)", [migrationName]);
 }
 
+async function migrateLegacyInvoices(pool) {
+  const migrationName = "legacy_invoice_files_v1";
+  const [completed] = await pool.execute("SELECT name FROM storage_migrations WHERE name = ? LIMIT 1", [migrationName]);
+  if (completed.length > 0) {
+    return;
+  }
+
+  let invoiceFiles;
+  try {
+    invoiceFiles = await readdir(invoicesDirectory);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return;
+    }
+    throw error;
+  }
+
+  for (const fileName of invoiceFiles) {
+    const match = /^((?:NBC)-[A-Z0-9]+-[A-Z0-9]+)\.pdf$/i.exec(fileName);
+    if (!match) {
+      continue;
+    }
+
+    const invoiceData = await readFile(join(invoicesDirectory, fileName));
+    if (invoiceData.length === 0) {
+      continue;
+    }
+
+    await pool.execute(
+      `UPDATE bookings
+       SET invoice_data = ?, invoice_content_type = ?
+       WHERE id = ? AND (invoice_data IS NULL OR OCTET_LENGTH(invoice_data) = 0)`,
+      [invoiceData, "application/pdf", match[1].toUpperCase()]
+    );
+  }
+
+  await pool.execute("INSERT INTO storage_migrations (name) VALUES (?)", [migrationName]);
+}
+
 async function getDbPool() {
   if (!hasDatabaseConfig) {
     return null;
@@ -262,6 +305,7 @@ async function getDbPool() {
 
       await initializeDatabase(pool);
       await migrateLegacyBookings(pool);
+      await migrateLegacyInvoices(pool);
       return pool;
     })();
   }
@@ -441,7 +485,6 @@ function pdfEscape(value) {
 }
 
 async function createInvoicePdf(record) {
-  const invoicePath = join(invoicesDirectory, `${record.id}.pdf`);
   const lines = [
     [20, "NORTHEAST BASECAMP"],
     [12, "BOOKING REQUEST INVOICE"],
@@ -495,9 +538,13 @@ async function createInvoicePdf(record) {
     pdf += `${String(offsets[index]).padStart(10, "0")} 00000 n \n`;
   }
   pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  return Buffer.from(pdf, "binary");
+}
+
+async function writeLocalInvoice(record, invoiceData) {
+  const invoicePath = join(invoicesDirectory, `${record.id}.pdf`);
   await mkdir(invoicesDirectory, { recursive: true });
-  await writeFile(invoicePath, pdf, "binary");
-  return `data/invoices/${record.id}.pdf`;
+  await writeFile(invoicePath, invoiceData);
 }
 
 async function saveBooking(booking) {
@@ -507,15 +554,16 @@ async function saveBooking(booking) {
     status: "new",
     ...booking
   };
-  record.invoicePath = await createInvoicePdf(record);
+  record.invoicePath = `data/invoices/${record.id}.pdf`;
+  const invoiceData = await createInvoicePdf(record);
 
   const pool = await getStoragePool();
   if (pool) {
     try {
       await pool.execute(
         `INSERT INTO bookings
-          (id, created_at, status, festival, plan, arrival_date, nights, guests, dinner_included, base_amount, dinner_amount, total_amount, name, phone, invoice_path, source)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          (id, created_at, status, festival, plan, arrival_date, nights, guests, dinner_included, base_amount, dinner_amount, total_amount, name, phone, invoice_path, invoice_data, invoice_content_type, source)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           record.id,
           record.createdAt.slice(0, 19).replace("T", " "),
@@ -532,6 +580,8 @@ async function saveBooking(booking) {
           record.name,
           record.phone,
           record.invoicePath,
+          invoiceData,
+          "application/pdf",
           "website"
         ]
       );
@@ -543,6 +593,7 @@ async function saveBooking(booking) {
   }
 
   // JSON storage is available only for local development when no database is configured.
+  await writeLocalInvoice(record, invoiceData);
   await appendLocalRecord(bookingsFile, record);
   return record;
 }
@@ -663,6 +714,49 @@ async function saveEnquiry(enquiry) {
   return record;
 }
 
+async function serveStoredInvoice(req, res, pathname) {
+  const match = /^\/data\/invoices\/(NBC-[A-Z0-9]+-[A-Z0-9]+)\.pdf$/i.exec(pathname);
+  if (!match) {
+    return false;
+  }
+
+  let pool;
+  try {
+    pool = await getStoragePool();
+  } catch (error) {
+    sendJson(res, error.statusCode || 503, { ok: false, message: "Invoice storage is temporarily unavailable." });
+    return true;
+  }
+
+  if (!pool) {
+    return false;
+  }
+
+  try {
+    const [rows] = await pool.execute(
+      "SELECT invoice_data, invoice_content_type FROM bookings WHERE id = ? LIMIT 1",
+      [match[1].toUpperCase()]
+    );
+    const row = rows[0];
+    if (!row?.invoice_data) {
+      return false;
+    }
+
+    const invoiceData = Buffer.isBuffer(row.invoice_data) ? row.invoice_data : Buffer.from(row.invoice_data);
+    res.writeHead(200, {
+      "Content-Type": row.invoice_content_type || "application/pdf",
+      "Content-Length": invoiceData.length,
+      "Content-Disposition": `inline; filename="${match[1].toUpperCase()}.pdf"`
+    });
+    res.end(req.method === "HEAD" ? undefined : invoiceData);
+    return true;
+  } catch (error) {
+    console.error("MySQL invoice lookup failed.", error.message);
+    sendJson(res, 503, { ok: false, message: "Invoice storage is temporarily unavailable." });
+    return true;
+  }
+}
+
 async function serveStatic(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const pathname = url.pathname === "/" ? "index.html" : decodeURIComponent(url.pathname).replace(/^\/+/, "");
@@ -757,6 +851,9 @@ const server = createServer(async (req, res) => {
   }
 
   if (req.method === "GET" || req.method === "HEAD") {
+    if (await serveStoredInvoice(req, res, requestUrl.pathname)) {
+      return;
+    }
     await serveStatic(req, res);
     return;
   }
