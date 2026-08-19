@@ -1,5 +1,6 @@
 # Runtime data
 data/bookings.json
+data/enquiries.json
 data/contest-entries.json
 data/lucky-entries.json
 data/invoices/

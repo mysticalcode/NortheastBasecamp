@@ -12,6 +12,7 @@ function getPort(value) {
 const port = getPort(process.env.PORT);
 const host = process.env.HOST || "0.0.0.0";
 const bookingsFile = join(__dirname, "data", "bookings.json");
+const enquiriesFile = join(__dirname, "data", "enquiries.json");
 const contestEntriesFile = join(__dirname, "data", "contest-entries.json");
 const luckyEntriesFile = join(__dirname, "data", "lucky-entries.json");
 const invoicesDirectory = join(__dirname, "data", "invoices");
@@ -39,7 +40,16 @@ const dbConfig = {
   database: process.env.DB_NAME || process.env.MYSQL_DATABASE || ""
 };
 const hasDatabaseConfig = Boolean(databaseUrl || (dbConfig.host && dbConfig.user && dbConfig.password && dbConfig.database));
+const databaseRequired = process.env.NODE_ENV === "production" || process.env.REQUIRE_DATABASE === "true";
 let dbPoolPromise;
+
+class StorageUnavailableError extends Error {
+  constructor() {
+    super("Your details could not be saved right now. Please try again in a few minutes.");
+    this.name = "StorageUnavailableError";
+    this.statusCode = 503;
+  }
+}
 
 const contentTypes = {
   ".html": "text/html; charset=utf-8",
@@ -141,6 +151,92 @@ async function initializeDatabase(pool) {
       source VARCHAR(64) NOT NULL DEFAULT 'website'
     )
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS storage_migrations (
+      name VARCHAR(128) PRIMARY KEY,
+      completed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+}
+
+function positiveInteger(value, fallback = 1) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function nonNegativeInteger(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed) : fallback;
+}
+
+function mysqlDate(value) {
+  const parsed = new Date(value);
+  const date = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  return date.toISOString().slice(0, 19).replace("T", " ");
+}
+
+async function migrateLegacyBookings(pool) {
+  const migrationName = "legacy_bookings_json_v1";
+  const [completed] = await pool.execute("SELECT name FROM storage_migrations WHERE name = ? LIMIT 1", [migrationName]);
+  if (completed.length > 0) {
+    return;
+  }
+
+  let bookings;
+  try {
+    bookings = JSON.parse(await readFile(bookingsFile, "utf8"));
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return;
+    }
+    throw error;
+  }
+
+  if (!Array.isArray(bookings)) {
+    throw new Error("Legacy bookings.json is not a valid booking list");
+  }
+
+  for (const booking of bookings) {
+    if (!booking || !booking.id || !booking.plan || !booking.name || !booking.phone) {
+      continue;
+    }
+
+    const planDetail = planDetails[booking.plan];
+    const guests = positiveInteger(booking.guests);
+    const nights = positiveInteger(booking.nights, planDetail?.nights || 1);
+    const dinnerIncluded = booking.dinnerIncluded === true || booking.dinnerIncluded === "true" || /dinner/i.test(String(booking.food || ""));
+    const calculatedBaseAmount = planDetail ? planDetail.rate * guests * (planDetail.rateType === "night" ? nights : 1) : 0;
+    const baseAmount = nonNegativeInteger(booking.baseAmount, calculatedBaseAmount);
+    const dinnerAmount = nonNegativeInteger(booking.dinnerAmount, dinnerIncluded ? dinnerRatePerGuestNight * guests * nights : 0);
+    const totalAmount = nonNegativeInteger(booking.totalAmount, baseAmount + dinnerAmount);
+
+    await pool.execute(
+      `INSERT IGNORE INTO bookings
+        (id, created_at, status, festival, plan, arrival_date, nights, guests, dinner_included, base_amount, dinner_amount, total_amount, name, phone, invoice_path, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        booking.id,
+        mysqlDate(booking.createdAt),
+        booking.status || "new",
+        booking.festival || ziroFestival,
+        booking.plan,
+        booking.arrivalDate || null,
+        nights,
+        guests,
+        dinnerIncluded ? 1 : 0,
+        baseAmount,
+        dinnerAmount,
+        totalAmount,
+        booking.name,
+        booking.phone,
+        booking.invoicePath || "",
+        "legacy-json-migration"
+      ]
+    );
+  }
+
+  await pool.execute("INSERT INTO storage_migrations (name) VALUES (?)", [migrationName]);
 }
 
 async function getDbPool() {
@@ -165,11 +261,36 @@ async function getDbPool() {
           });
 
       await initializeDatabase(pool);
+      await migrateLegacyBookings(pool);
       return pool;
     })();
   }
 
-  return dbPoolPromise;
+  try {
+    return await dbPoolPromise;
+  } catch (error) {
+    dbPoolPromise = undefined;
+    throw error;
+  }
+}
+
+async function getStoragePool() {
+  try {
+    const pool = await getDbPool();
+    if (pool) {
+      return pool;
+    }
+  } catch (error) {
+    console.error("MySQL storage is unavailable.", error.message);
+    throw new StorageUnavailableError();
+  }
+
+  if (databaseRequired) {
+    console.error("MySQL storage is required but database configuration is missing.");
+    throw new StorageUnavailableError();
+  }
+
+  return null;
 }
 
 async function readJsonBody(req) {
@@ -388,9 +509,9 @@ async function saveBooking(booking) {
   };
   record.invoicePath = await createInvoicePdf(record);
 
-  try {
-    const pool = await getDbPool();
-    if (pool) {
+  const pool = await getStoragePool();
+  if (pool) {
+    try {
       await pool.execute(
         `INSERT INTO bookings
           (id, created_at, status, festival, plan, arrival_date, nights, guests, dinner_included, base_amount, dinner_amount, total_amount, name, phone, invoice_path, source)
@@ -415,22 +536,14 @@ async function saveBooking(booking) {
         ]
       );
       return record;
+    } catch (error) {
+      console.error("MySQL booking insert failed.", error.message);
+      throw new StorageUnavailableError();
     }
-  } catch (error) {
-    console.error("MySQL booking storage failed; using local booking storage instead.", error.message);
   }
 
-  await mkdir(dirname(bookingsFile), { recursive: true });
-
-  let bookings = [];
-  try {
-    bookings = JSON.parse(await readFile(bookingsFile, "utf8"));
-  } catch {
-    bookings = [];
-  }
-
-  bookings.push(record);
-  await writeFile(bookingsFile, `${JSON.stringify(bookings, null, 2)}\n`);
+  // JSON storage is available only for local development when no database is configured.
+  await appendLocalRecord(bookingsFile, record);
   return record;
 }
 
@@ -448,32 +561,35 @@ async function appendLocalRecord(filePath, record) {
 
 async function saveContestEntry(entry) {
   const record = { id: createReference("NBCON"), createdAt: new Date().toISOString(), status: "new", ...entry };
-  try {
-    const pool = await getDbPool();
-    if (pool) {
+  const pool = await getStoragePool();
+  if (pool) {
+    try {
       await pool.execute(
         `INSERT INTO contest_entries (id, created_at, status, instagram_url, email, phone, source)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [record.id, record.createdAt.slice(0, 19).replace("T", " "), record.status, record.instagramUrl, record.email, record.phone, "website-contest"]
       );
       return record;
+    } catch (error) {
+      console.error("MySQL contest entry insert failed.", error.message);
+      throw new StorageUnavailableError();
     }
-  } catch (error) {
-    console.error("MySQL contest storage failed; using local contest storage instead.", error.message);
   }
+
   await appendLocalRecord(contestEntriesFile, record);
   return record;
 }
 
 async function bookingReferenceExists(bookingReference) {
-  try {
-    const pool = await getDbPool();
-    if (pool) {
+  const pool = await getStoragePool();
+  if (pool) {
+    try {
       const [rows] = await pool.execute("SELECT id FROM bookings WHERE id = ? LIMIT 1", [bookingReference]);
       return rows.length > 0;
+    } catch (error) {
+      console.error("MySQL booking reference lookup failed.", error.message);
+      throw new StorageUnavailableError();
     }
-  } catch (error) {
-    console.error("MySQL booking reference lookup failed; checking local booking storage instead.", error.message);
   }
 
   try {
@@ -490,19 +606,21 @@ async function saveLuckyEntry(entry) {
   }
 
   const record = { id: createReference("NBLUCK"), createdAt: new Date().toISOString(), status: "new", ...entry };
-  try {
-    const pool = await getDbPool();
-    if (pool) {
+  const pool = await getStoragePool();
+  if (pool) {
+    try {
       await pool.execute(
         `INSERT INTO lucky_entries (id, created_at, status, email, phone, booking_reference, source)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [record.id, record.createdAt.slice(0, 19).replace("T", " "), record.status, record.email, record.phone, record.bookingReference, "website-lucky-entry"]
       );
       return record;
+    } catch (error) {
+      console.error("MySQL lucky entry insert failed.", error.message);
+      throw new StorageUnavailableError();
     }
-  } catch (error) {
-    console.error("MySQL lucky-entry storage failed; using local lucky-entry storage instead.", error.message);
   }
+
   await appendLocalRecord(luckyEntriesFile, record);
   return record;
 }
@@ -515,27 +633,33 @@ async function saveEnquiry(enquiry) {
     ...enquiry
   };
 
-  const pool = await getDbPool();
+  const pool = await getStoragePool();
   if (pool) {
-    await pool.execute(
-      `INSERT INTO enquiries
-        (id, created_at, status, name, phone, email, subject, message, source)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        record.id,
-        record.createdAt.slice(0, 19).replace("T", " "),
-        record.status,
-        record.name,
-        record.phone || null,
-        record.email || null,
-        record.subject || null,
-        record.message,
-        "website"
-      ]
-    );
-    return record;
+    try {
+      await pool.execute(
+        `INSERT INTO enquiries
+          (id, created_at, status, name, phone, email, subject, message, source)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          record.id,
+          record.createdAt.slice(0, 19).replace("T", " "),
+          record.status,
+          record.name,
+          record.phone || null,
+          record.email || null,
+          record.subject || null,
+          record.message,
+          "website"
+        ]
+      );
+      return record;
+    } catch (error) {
+      console.error("MySQL enquiry insert failed.", error.message);
+      throw new StorageUnavailableError();
+    }
   }
 
+  await appendLocalRecord(enquiriesFile, record);
   return record;
 }
 
@@ -564,19 +688,24 @@ const server = createServer(async (req, res) => {
   const requestUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
 
   if (req.method === "GET" && (requestUrl.pathname === "/healthz" || requestUrl.pathname === "/health")) {
-    const payload = { ok: true, service: "northeast-basecamp-site", storage: hasDatabaseConfig ? "mysql" : "json" };
+    const payload = { ok: true, service: "northeast-basecamp-site", storage: hasDatabaseConfig || databaseRequired ? "mysql" : "json" };
+    const shouldCheckDatabase = hasDatabaseConfig || databaseRequired || requestUrl.searchParams.get("db") === "1";
 
-    if (requestUrl.searchParams.get("db") === "1") {
+    if (shouldCheckDatabase) {
       try {
         const pool = await getDbPool();
         if (pool) {
           await pool.query("SELECT 1");
           payload.database = "ok";
+        } else if (databaseRequired) {
+          sendJson(res, 503, { ok: false, service: "northeast-basecamp-site", storage: "mysql", database: "not_configured", message: "Database storage is not configured." });
+          return;
         } else {
           payload.database = "not_configured";
         }
       } catch (error) {
-        sendJson(res, 500, { ok: false, service: "northeast-basecamp-site", storage: "mysql", database: "error", message: error.message });
+        console.error("MySQL health check failed.", error.message);
+        sendJson(res, 503, { ok: false, service: "northeast-basecamp-site", storage: "mysql", database: "error", message: "Database storage is unavailable." });
         return;
       }
     }
@@ -591,7 +720,7 @@ const server = createServer(async (req, res) => {
       const record = await saveBooking(booking);
       sendJson(res, 201, { ok: true, reference: record.id, invoiceUrl: `/${record.invoicePath}`, totalAmount: record.totalAmount });
     } catch (error) {
-      sendJson(res, 400, { ok: false, message: error.message });
+      sendJson(res, error.statusCode || 400, { ok: false, message: error.message });
     }
     return;
   }
@@ -602,7 +731,7 @@ const server = createServer(async (req, res) => {
       const record = await saveEnquiry(enquiry);
       sendJson(res, 201, { ok: true, reference: record.id });
     } catch (error) {
-      sendJson(res, 400, { ok: false, message: error.message });
+      sendJson(res, error.statusCode || 400, { ok: false, message: error.message });
     }
     return;
   }
@@ -612,7 +741,7 @@ const server = createServer(async (req, res) => {
       const record = await saveContestEntry(cleanContestEntry(await readJsonBody(req)));
       sendJson(res, 201, { ok: true, reference: record.id });
     } catch (error) {
-      sendJson(res, 400, { ok: false, message: error.message });
+      sendJson(res, error.statusCode || 400, { ok: false, message: error.message });
     }
     return;
   }
@@ -622,7 +751,7 @@ const server = createServer(async (req, res) => {
       const record = await saveLuckyEntry(cleanLuckyEntry(await readJsonBody(req)));
       sendJson(res, 201, { ok: true, reference: record.id });
     } catch (error) {
-      sendJson(res, 400, { ok: false, message: error.message });
+      sendJson(res, error.statusCode || 400, { ok: false, message: error.message });
     }
     return;
   }

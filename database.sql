@@ -48,3 +48,8 @@ CREATE TABLE IF NOT EXISTS lucky_entries (
   booking_reference VARCHAR(40) NOT NULL,
   source VARCHAR(64) NOT NULL DEFAULT 'website'
 );
+
+CREATE TABLE IF NOT EXISTS storage_migrations (
+  name VARCHAR(128) PRIMARY KEY,
+  completed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
