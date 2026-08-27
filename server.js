@@ -20,17 +20,17 @@ const invoicesDirectory = join(__dirname, "data", "invoices");
 const ziroFestival = "Ziro Music Festival 2026";
 const dinnerRatePerGuestNight = 400;
 const planDetails = {
-  "Dome Tent - 2 Sharing": { rate: 2200, rateType: "night" },
-  "Dome Tent - 3 Sharing": { rate: 2000, rateType: "night" },
-  "Dome Tent - Solo": { rate: 3000, rateType: "night" },
-  "Alpine Tent - 4 Sharing": { rate: 2000, rateType: "night" },
-  "Alpine Tent - 3 Sharing": { rate: 2600, rateType: "night" },
-  "Alpine Tent - 2 Sharing": { rate: 3800, rateType: "night" },
-  "Premium Tent": { rate: 4500, rateType: "night" },
-  "5N/6D Ex Guwahati - Traveller": { rate: 18000, rateType: "package", nights: 5 },
-  "5N/6D Ex Guwahati - Urbania": { rate: 22000, rateType: "package", nights: 5 },
-  "5N/6D Ex Guwahati - Innova / Ertiga": { rate: 20000, rateType: "package", nights: 5 },
-  "4N/5D Ex Naharlagun": { rate: 12000, rateType: "package", nights: 4 }
+  "Dome Tent - 2 Sharing": { rate: 2200, rateType: "night", tentType: "Dome Tent", sharing: 2 },
+  "Dome Tent - 3 Sharing": { rate: 2000, rateType: "night", tentType: "Dome Tent", sharing: 3 },
+  "Dome Tent - Solo": { rate: 3000, rateType: "night", tentType: "Dome Tent", sharing: 1 },
+  "Alpine Tent - 4 Sharing": { rate: 2000, rateType: "night", tentType: "Alpine Tent", sharing: 4 },
+  "Alpine Tent - 3 Sharing": { rate: 2600, rateType: "night", tentType: "Alpine Tent", sharing: 3 },
+  "Alpine Tent - 2 Sharing": { rate: 3800, rateType: "night", tentType: "Alpine Tent", sharing: 2 },
+  "Premium Tent": { rate: 4500, rateType: "night", tentType: "Premium Tent", sharing: 2 },
+  "5N/6D Ex Guwahati - Traveller": { rate: 18000, rateType: "package", nights: 5, tentType: "Dome Tent" },
+  "5N/6D Ex Guwahati - Urbania": { rate: 22000, rateType: "package", nights: 5, tentType: "Dome Tent" },
+  "5N/6D Ex Guwahati - Innova / Ertiga": { rate: 20000, rateType: "package", nights: 5, tentType: "Dome Tent" },
+  "4N/5D Ex Naharlagun": { rate: 12000, rateType: "package", nights: 4, tentType: "Dome Tent" }
 };
 const databaseUrl = process.env.DATABASE_URL || "";
 const dbConfig = {
@@ -44,9 +44,12 @@ const hasDatabaseConfig = Boolean(databaseUrl || (dbConfig.host && dbConfig.user
 const databaseRequired = process.env.NODE_ENV === "production" || process.env.REQUIRE_DATABASE === "true";
 const adminUsername = process.env.ADMIN_USERNAME || "";
 const adminPassword = process.env.ADMIN_PASSWORD || "";
-const leadStatuses = new Set(["new", "contacted", "qualified", "proposal", "won", "lost"]);
+const leadStatuses = new Set(["new", "contacted", "waiting", "qualified", "proposal", "booking-requested", "booking-confirmed", "payment-pending", "paid", "checked-in", "completed", "won", "lost"]);
 const leadSources = new Set(["manual", "website-enquiry", "phone", "whatsapp", "instagram", "referral", "other"]);
 const activityTypes = new Set(["note", "call", "email", "whatsapp", "meeting", "status-update"]);
+const tentTypes = new Set(["Dome Tent", "Alpine Tent", "Premium Tent"]);
+const tentOperationalStatuses = new Set(["available", "maintenance", "retired"]);
+const allocationStatuses = new Set(["reserved", "checked-in", "checked-out", "cancelled"]);
 let dbPoolPromise;
 
 class StorageUnavailableError extends Error {
@@ -232,6 +235,38 @@ async function initializeDatabase(pool) {
       activity_type VARCHAR(32) NOT NULL DEFAULT 'note',
       note TEXT NOT NULL,
       INDEX lead_activities_lead_created (lead_id, created_at)
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tent_units (
+      id VARCHAR(40) PRIMARY KEY,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      tent_code VARCHAR(64) NOT NULL UNIQUE,
+      tent_type VARCHAR(64) NOT NULL,
+      capacity INT NOT NULL,
+      operational_status VARCHAR(32) NOT NULL DEFAULT 'available',
+      notes TEXT NULL,
+      INDEX tent_units_type_status (tent_type, operational_status)
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tent_allocations (
+      id VARCHAR(40) PRIMARY KEY,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      booking_reference VARCHAR(40) NOT NULL,
+      tent_id VARCHAR(40) NOT NULL,
+      guest_count INT NOT NULL,
+      arrival_date DATE NOT NULL,
+      departure_date DATE NOT NULL,
+      allocation_status VARCHAR(32) NOT NULL DEFAULT 'reserved',
+      notes TEXT NULL,
+      INDEX tent_allocations_booking (booking_reference),
+      INDEX tent_allocations_tent_dates (tent_id, arrival_date, departure_date),
+      INDEX tent_allocations_status (allocation_status)
     )
   `);
 
@@ -588,7 +623,7 @@ function cleanFollowUpDate(value) {
 
 function cleanLead(input) {
   const lead = {
-    name: cleanOptionalText(input.name, 255),
+    name: cleanOptionalText(input.name, 255) || "Untitled lead",
     phone: cleanOptionalText(input.phone, 64),
     email: cleanOptionalText(input.email, 255).toLowerCase(),
     subject: cleanOptionalText(input.subject, 255),
@@ -599,12 +634,6 @@ function cleanLead(input) {
     nextFollowUpAt: cleanFollowUpDate(input.nextFollowUpAt)
   };
 
-  if (!lead.name) {
-    throw new Error("Lead name is required");
-  }
-  if (!lead.phone && !lead.email) {
-    throw new Error("Add a phone number or email address for this lead");
-  }
   if (lead.phone) {
     lead.phone = cleanPhone(lead.phone);
   }
@@ -627,6 +656,59 @@ function cleanLeadActivity(input) {
     throw new Error("Activity note is required");
   }
   return { activityType, note, status: input.status ? cleanLeadStatus(input.status) : null };
+}
+
+function cleanIsoDate(value, fieldName) {
+  const date = String(value || "").trim();
+  const parsed = new Date(`${date}T12:00:00Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
+    throw new Error(`${fieldName} must be a valid date`);
+  }
+  return date;
+}
+
+function cleanTentUnit(input) {
+  const tentCode = cleanOptionalText(input.tentCode, 64).toUpperCase();
+  const tentType = cleanOptionalText(input.tentType, 64);
+  const capacity = Number(input.capacity);
+  const operationalStatus = String(input.operationalStatus || "available").trim().toLowerCase();
+  const notes = cleanOptionalText(input.notes, 5000);
+  if (!/^[A-Z0-9][A-Z0-9-]{1,63}$/.test(tentCode)) {
+    throw new Error("Tent code can use letters, numbers and hyphens only");
+  }
+  if (!tentTypes.has(tentType)) {
+    throw new Error("Please select a valid tent type");
+  }
+  if (!Number.isInteger(capacity) || capacity < 1 || capacity > 12) {
+    throw new Error("Tent capacity must be between 1 and 12 guests");
+  }
+  if (!tentOperationalStatuses.has(operationalStatus)) {
+    throw new Error("Please select a valid tent operational status");
+  }
+  return { tentCode, tentType, capacity, operationalStatus, notes };
+}
+
+function cleanTentAllocation(input) {
+  const bookingReference = cleanOptionalText(input.bookingReference, 40).toUpperCase();
+  const tentId = cleanAdminId(input.tentId, "NBT");
+  const guestCount = Number(input.guestCount);
+  const arrivalDate = cleanIsoDate(input.arrivalDate, "Arrival date");
+  const departureDate = cleanIsoDate(input.departureDate, "Departure date");
+  const allocationStatus = String(input.allocationStatus || "reserved").trim().toLowerCase();
+  const notes = cleanOptionalText(input.notes, 5000);
+  if (!/^NBC-[A-Z0-9]+-[A-Z0-9]+$/.test(bookingReference)) {
+    throw new Error("Please select a valid booking reference");
+  }
+  if (!Number.isInteger(guestCount) || guestCount < 1 || guestCount > 12) {
+    throw new Error("Allocated guest count must be between 1 and 12");
+  }
+  if (departureDate <= arrivalDate) {
+    throw new Error("Departure date must be after arrival date");
+  }
+  if (!allocationStatuses.has(allocationStatus)) {
+    throw new Error("Please select a valid allocation status");
+  }
+  return { bookingReference, tentId, guestCount, arrivalDate, departureDate, allocationStatus, notes };
 }
 
 function createReference(prefix) {
@@ -887,15 +969,18 @@ async function getAdminPool() {
 
 async function getAdminDashboard() {
   const pool = await getAdminPool();
-  const [[summary], [bookings], [enquiries], [contestEntries], [luckyEntries], [leads], [activities]] = await Promise.all([
+  const [[summary], [bookings], [enquiries], [contestEntries], [luckyEntries], [leads], [activities], [tentUnits], [tentAllocations]] = await Promise.all([
     pool.query(`
       SELECT
         (SELECT COUNT(*) FROM bookings) AS total_bookings,
         (SELECT COUNT(*) FROM enquiries WHERE status = 'new') AS new_enquiries,
-        (SELECT COUNT(*) FROM leads WHERE status NOT IN ('won', 'lost')) AS open_leads,
-        (SELECT COUNT(*) FROM leads WHERE next_follow_up_at IS NOT NULL AND next_follow_up_at <= DATE_ADD(NOW(), INTERVAL 1 DAY) AND status NOT IN ('won', 'lost')) AS follow_ups_due,
+        (SELECT COUNT(*) FROM leads WHERE status NOT IN ('won', 'lost', 'completed')) AS open_leads,
+        (SELECT COUNT(*) FROM leads WHERE next_follow_up_at IS NOT NULL AND next_follow_up_at <= DATE_ADD(NOW(), INTERVAL 1 DAY) AND status NOT IN ('won', 'lost', 'completed')) AS follow_ups_due,
         (SELECT COUNT(*) FROM contest_entries) AS contest_entries,
-        (SELECT COUNT(*) FROM lucky_entries) AS lucky_entries
+        (SELECT COUNT(*) FROM lucky_entries) AS lucky_entries,
+        (SELECT COUNT(*) FROM tent_units) AS total_tents,
+        (SELECT COUNT(*) FROM tent_units WHERE operational_status = 'maintenance') AS tents_in_maintenance,
+        (SELECT COUNT(*) FROM tent_allocations WHERE allocation_status IN ('reserved', 'checked-in')) AS active_allocations
     `),
     pool.query(`
       SELECT id, created_at, status, festival, plan, arrival_date, nights, guests, dinner_included, total_amount, name, phone, invoice_path,
@@ -927,7 +1012,7 @@ async function getAdminDashboard() {
              l.booking_reference, l.next_follow_up_at,
              (SELECT MAX(a.created_at) FROM lead_activities a WHERE a.lead_id = l.id) AS last_activity_at
       FROM leads l
-      ORDER BY CASE WHEN l.status IN ('won', 'lost') THEN 1 ELSE 0 END, l.next_follow_up_at IS NULL, l.next_follow_up_at ASC, l.updated_at DESC
+      ORDER BY CASE WHEN l.status IN ('won', 'lost', 'completed') THEN 1 ELSE 0 END, l.next_follow_up_at IS NULL, l.next_follow_up_at ASC, l.updated_at DESC
       LIMIT 200
     `),
     pool.query(`
@@ -935,10 +1020,42 @@ async function getAdminDashboard() {
       FROM lead_activities
       ORDER BY created_at DESC
       LIMIT 500
+    `),
+    pool.query(`
+      SELECT t.id, t.created_at, t.updated_at, t.tent_code, t.tent_type, t.capacity, t.operational_status, t.notes,
+             SUM(CASE WHEN a.allocation_status IN ('reserved', 'checked-in')
+                       AND a.arrival_date <= CURDATE() AND a.departure_date > CURDATE() THEN 1 ELSE 0 END) AS occupied_today
+      FROM tent_units t
+      LEFT JOIN tent_allocations a ON a.tent_id = t.id
+      GROUP BY t.id, t.created_at, t.updated_at, t.tent_code, t.tent_type, t.capacity, t.operational_status, t.notes
+      ORDER BY FIELD(t.tent_type, 'Premium Tent', 'Alpine Tent', 'Dome Tent'), t.tent_code ASC
+    `),
+    pool.query(`
+      SELECT a.id, a.created_at, a.updated_at, a.booking_reference, a.tent_id, a.guest_count, a.arrival_date, a.departure_date,
+             a.allocation_status, a.notes, t.tent_code, t.tent_type, b.name AS guest_name, b.phone AS guest_phone, b.plan
+      FROM tent_allocations a
+      INNER JOIN tent_units t ON t.id = a.tent_id
+      LEFT JOIN bookings b ON b.id = a.booking_reference
+      ORDER BY CASE WHEN a.allocation_status IN ('reserved', 'checked-in') THEN 0 ELSE 1 END, a.arrival_date ASC, a.created_at DESC
+      LIMIT 250
     `)
   ]);
 
-  return { summary, bookings, enquiries, contestEntries, luckyEntries, leads, activities };
+  return {
+    summary,
+    bookings: bookings.map((booking) => ({
+      ...booking,
+      tent_type: planDetails[booking.plan]?.tentType || null,
+      tent_sharing: planDetails[booking.plan]?.sharing || null
+    })),
+    enquiries,
+    contestEntries,
+    luckyEntries,
+    leads,
+    activities,
+    tentUnits,
+    tentAllocations
+  };
 }
 
 async function createAdminLead(input, sourceReference = null) {
@@ -1048,6 +1165,132 @@ async function convertEnquiryToLead(enquiryId) {
   return lead;
 }
 
+async function createTentUnit(input) {
+  const tent = cleanTentUnit(input);
+  const pool = await getAdminPool();
+  const record = { id: createReference("NBT"), ...tent };
+  try {
+    await pool.execute(
+      `INSERT INTO tent_units (id, tent_code, tent_type, capacity, operational_status, notes)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [record.id, record.tentCode, record.tentType, record.capacity, record.operationalStatus, record.notes || null]
+    );
+  } catch (error) {
+    if (error.code === "ER_DUP_ENTRY") {
+      throw httpError("A tent with this code already exists", 409);
+    }
+    throw error;
+  }
+  return record;
+}
+
+async function updateTentUnit(tentId, input) {
+  const id = cleanAdminId(tentId, "NBT");
+  const tent = cleanTentUnit(input);
+  const pool = await getAdminPool();
+  try {
+    const [result] = await pool.execute(
+      `UPDATE tent_units
+       SET tent_code = ?, tent_type = ?, capacity = ?, operational_status = ?, notes = ?
+       WHERE id = ?`,
+      [tent.tentCode, tent.tentType, tent.capacity, tent.operationalStatus, tent.notes || null, id]
+    );
+    if (result.affectedRows === 0) {
+      throw httpError("Tent not found", 404);
+    }
+  } catch (error) {
+    if (error.code === "ER_DUP_ENTRY") {
+      throw httpError("A tent with this code already exists", 409);
+    }
+    throw error;
+  }
+  return { id, ...tent };
+}
+
+async function assertTentAllocation(pool, allocation, allocationId = null) {
+  const [bookingRows] = await pool.execute(
+    "SELECT id, plan, guests, arrival_date, nights FROM bookings WHERE id = ? LIMIT 1",
+    [allocation.bookingReference]
+  );
+  if (bookingRows.length === 0) {
+    throw httpError("Booking reference was not found", 404);
+  }
+
+  const [tentRows] = await pool.execute(
+    "SELECT id, tent_type, capacity, operational_status FROM tent_units WHERE id = ? LIMIT 1",
+    [allocation.tentId]
+  );
+  if (tentRows.length === 0) {
+    throw httpError("Tent was not found", 404);
+  }
+
+  const booking = bookingRows[0];
+  const tent = tentRows[0];
+  const isActiveAllocation = ["reserved", "checked-in"].includes(allocation.allocationStatus);
+  if (!isActiveAllocation) {
+    return { booking, tent };
+  }
+  if (tent.operational_status !== "available") {
+    throw httpError("Only available tents can be allotted", 409);
+  }
+  if (allocation.guestCount > tent.capacity) {
+    throw httpError(`This tent can host a maximum of ${tent.capacity} guests`, 409);
+  }
+  const expectedTentType = planDetails[booking.plan]?.tentType;
+  if (expectedTentType && expectedTentType !== tent.tent_type) {
+    throw httpError(`This package requires a ${expectedTentType}`, 409);
+  }
+
+  let clashQuery = `
+    SELECT id FROM tent_allocations
+    WHERE tent_id = ?
+      AND allocation_status IN ('reserved', 'checked-in')
+      AND arrival_date < ?
+      AND departure_date > ?`;
+  const clashValues = [allocation.tentId, allocation.departureDate, allocation.arrivalDate];
+  if (allocationId) {
+    clashQuery += " AND id <> ?";
+    clashValues.push(allocationId);
+  }
+  clashQuery += " LIMIT 1";
+  const [clashes] = await pool.execute(clashQuery, clashValues);
+  if (clashes.length > 0) {
+    throw httpError("This tent is already allotted for part of those dates", 409);
+  }
+  return { booking, tent };
+}
+
+async function createTentAllocation(input) {
+  const allocation = cleanTentAllocation(input);
+  const pool = await getAdminPool();
+  await assertTentAllocation(pool, allocation);
+  const record = { id: createReference("NBTA"), ...allocation };
+  await pool.execute(
+    `INSERT INTO tent_allocations
+      (id, booking_reference, tent_id, guest_count, arrival_date, departure_date, allocation_status, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [record.id, record.bookingReference, record.tentId, record.guestCount, record.arrivalDate, record.departureDate, record.allocationStatus, record.notes || null]
+  );
+  return record;
+}
+
+async function updateTentAllocation(allocationId, input) {
+  const id = cleanAdminId(allocationId, "NBTA");
+  const allocation = cleanTentAllocation(input);
+  const pool = await getAdminPool();
+  await assertTentAllocation(pool, allocation, id);
+  const [result] = await pool.execute(
+    `UPDATE tent_allocations
+     SET booking_reference = ?, tent_id = ?, guest_count = ?, arrival_date = ?, departure_date = ?, allocation_status = ?, notes = ?
+     WHERE id = ?`,
+    [allocation.bookingReference, allocation.tentId, allocation.guestCount, allocation.arrivalDate, allocation.departureDate, allocation.allocationStatus, allocation.notes || null, id]
+  );
+  if (result.affectedRows === 0) {
+    throw httpError("Tent allocation not found", 404);
+  }
+  return { id, ...allocation };
+}
+
 async function serveStoredInvoice(req, res, pathname) {
   const match = /^\/data\/invoices\/(NBC-[A-Z0-9]+-[A-Z0-9]+)\.pdf$/i.exec(pathname);
   if (!match) {
@@ -1143,10 +1386,36 @@ const server = createServer(async (req, res) => {
         return;
       }
 
+      if (req.method === "POST" && requestUrl.pathname === "/api/admin/tents") {
+        const record = await createTentUnit(await readJsonBody(req));
+        sendJson(res, 201, { ok: true, tent: record });
+        return;
+      }
+
+      if (req.method === "POST" && requestUrl.pathname === "/api/admin/tent-allocations") {
+        const record = await createTentAllocation(await readJsonBody(req));
+        sendJson(res, 201, { ok: true, allocation: record });
+        return;
+      }
+
       const leadMatch = /^\/api\/admin\/leads\/([^/]+)$/.exec(requestUrl.pathname);
       if (req.method === "PATCH" && leadMatch) {
         const record = await updateAdminLead(leadMatch[1], await readJsonBody(req));
         sendJson(res, 200, { ok: true, lead: record });
+        return;
+      }
+
+      const tentMatch = /^\/api\/admin\/tents\/([^/]+)$/.exec(requestUrl.pathname);
+      if (req.method === "PATCH" && tentMatch) {
+        const record = await updateTentUnit(tentMatch[1], await readJsonBody(req));
+        sendJson(res, 200, { ok: true, tent: record });
+        return;
+      }
+
+      const allocationMatch = /^\/api\/admin\/tent-allocations\/([^/]+)$/.exec(requestUrl.pathname);
+      if (req.method === "PATCH" && allocationMatch) {
+        const record = await updateTentAllocation(allocationMatch[1], await readJsonBody(req));
+        sendJson(res, 200, { ok: true, allocation: record });
         return;
       }
 

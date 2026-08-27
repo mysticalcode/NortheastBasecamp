@@ -40,6 +40,7 @@
         <article class="metric-card"><span>New enquiries</span><strong id="metricEnquiries">—</strong></article>
         <article class="metric-card"><span>Open leads</span><strong id="metricLeads">—</strong></article>
         <article class="metric-card accent"><span>Follow-ups due</span><strong id="metricFollowUps">—</strong></article>
+        <article class="metric-card tent-metric"><span>Active tent allotments</span><strong id="metricAllocations">—</strong></article>
       </section>
 
       <section class="crm-layout" aria-label="Lead CRM">
@@ -50,14 +51,15 @@
             <p>Log phone calls, WhatsApp enquiries, referrals or walk-ins before they slip away.</p>
           </div>
           <form id="leadForm" class="admin-form">
-            <label>Guest name<input name="name" autocomplete="name" required maxlength="255" placeholder="Full name"></label>
+            <p class="form-hint">Every field is optional. Save a lead with only the details you have, then enrich it as the conversation progresses.</p>
+            <label>Guest name<input name="name" autocomplete="name" maxlength="255" placeholder="Full name, if known"></label>
             <div class="form-row">
               <label>Mobile<input name="phone" autocomplete="tel" inputmode="tel" placeholder="+91 98765 43210"></label>
               <label>Email<input name="email" autocomplete="email" type="email" placeholder="guest@example.com"></label>
             </div>
             <div class="form-row">
               <label>Source<select name="source"><option value="manual">Manual</option><option value="phone">Phone</option><option value="whatsapp">WhatsApp</option><option value="instagram">Instagram</option><option value="referral">Referral</option><option value="other">Other</option></select></label>
-              <label>Status<select name="status"><option value="new">New</option><option value="contacted">Contacted</option><option value="qualified">Qualified</option><option value="proposal">Proposal sent</option><option value="won">Won</option><option value="lost">Lost</option></select></label>
+              <label>Status<select name="status"><option value="new">New</option><option value="contacted">Contacted</option><option value="waiting">Waiting for guest</option><option value="qualified">Qualified</option><option value="proposal">Proposal sent</option><option value="booking-requested">Booking requested</option><option value="booking-confirmed">Booking confirmed</option><option value="payment-pending">Payment pending</option><option value="paid">Payment received</option><option value="checked-in">Checked in</option><option value="completed">Completed stay</option><option value="won">Won</option><option value="lost">Lost</option></select></label>
             </div>
             <label>Interest / subject<input name="subject" maxlength="255" placeholder="Ziro stay, transport, group booking…"></label>
             <div class="form-row">
@@ -74,13 +76,65 @@
             <div><p class="eyebrow">CRM pipeline</p><h2>Track the next move</h2></div>
             <span class="count-pill" id="leadCount">0 leads</span>
           </div>
+          <div class="workspace-tools" aria-label="Filter lead pipeline">
+            <input id="leadSearch" type="search" placeholder="Search name, phone, email or booking…" autocomplete="off">
+            <select id="leadStatusFilter" aria-label="Filter leads by status"><option value="">All lead statuses</option><option value="new">New</option><option value="contacted">Contacted</option><option value="waiting">Waiting for guest</option><option value="qualified">Qualified</option><option value="proposal">Proposal sent</option><option value="booking-requested">Booking requested</option><option value="booking-confirmed">Booking confirmed</option><option value="payment-pending">Payment pending</option><option value="paid">Payment received</option><option value="checked-in">Checked in</option><option value="completed">Completed stay</option><option value="won">Won</option><option value="lost">Lost</option></select>
+          </div>
           <div class="lead-list" id="leadList" aria-live="polite"><p class="empty-state">Loading your lead pipeline…</p></div>
         </article>
       </section>
 
       <section class="data-section" aria-labelledby="bookingHeading">
         <div class="section-heading"><div><p class="eyebrow">Booking requests</p><h2 id="bookingHeading">Recent guest bookings</h2></div><span class="count-pill" id="bookingCount">0 records</span></div>
-        <div class="table-wrap"><table><thead><tr><th>Guest</th><th>Package</th><th>Stay</th><th>Total</th><th>Invoice</th><th>Requested</th></tr></thead><tbody id="bookingRows"></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>Guest</th><th>Package</th><th>Stay</th><th>Total</th><th>Invoice</th><th>Allot tent</th><th>Requested</th></tr></thead><tbody id="bookingRows"></tbody></table></div>
+      </section>
+
+      <section class="tent-layout" aria-label="Tent operations">
+        <article class="panel tent-capture">
+          <div class="panel-heading">
+            <p class="eyebrow">Tent inventory</p>
+            <h2>Keep every tent ready</h2>
+            <p>Add the physical tents you operate. Availability is protected against overlapping stay dates.</p>
+          </div>
+          <form id="tentForm" class="admin-form">
+            <div class="form-row">
+              <label>Tent code<input name="tentCode" required maxlength="64" pattern="[A-Za-z0-9-]{2,64}" placeholder="D-01"></label>
+              <label>Tent type<select name="tentType" required><option value="Dome Tent">Dome Tent</option><option value="Alpine Tent">Alpine Tent</option><option value="Premium Tent">Premium Tent</option></select></label>
+            </div>
+            <div class="form-row">
+              <label>Guest capacity<input name="capacity" required type="number" min="1" max="12" value="2"></label>
+              <label>Operational status<select name="operationalStatus"><option value="available">Available</option><option value="maintenance">Maintenance</option><option value="retired">Retired</option></select></label>
+            </div>
+            <label>Operations note<textarea name="notes" rows="3" maxlength="5000" placeholder="Setup, repairs, special considerations…"></textarea></label>
+            <button class="button primary" type="submit">Add tent to inventory</button>
+          </form>
+          <div class="inventory-list" id="tentInventory" aria-live="polite"></div>
+        </article>
+
+        <article class="panel allocation-panel" id="allocationPanel">
+          <div class="panel-heading">
+            <p class="eyebrow">Stay operations</p>
+            <h2>Allot a tent to a booking</h2>
+            <p>Package compatibility, capacity and date clashes are checked before an allotment is saved.</p>
+          </div>
+          <form id="allocationForm" class="admin-form">
+            <label>Booking<select id="allocationBooking" name="bookingReference" required><option value="">Choose a booking</option></select></label>
+            <div class="form-row">
+              <label>Allotted tent<select id="allocationTent" name="tentId" required><option value="">Choose a tent</option></select></label>
+              <label>Guests in this tent<input id="allocationGuests" name="guestCount" required type="number" min="1" max="12" value="1"></label>
+            </div>
+            <div class="form-row">
+              <label>Arrival<input id="allocationArrival" name="arrivalDate" required type="date"></label>
+              <label>Departure<input id="allocationDeparture" name="departureDate" required type="date"></label>
+            </div>
+            <div class="form-row">
+              <label>Allotment status<select name="allocationStatus"><option value="reserved">Reserved</option><option value="checked-in">Checked in</option><option value="checked-out">Checked out</option><option value="cancelled">Cancelled</option></select></label>
+              <label>Allocation note<input name="notes" maxlength="5000" placeholder="Rooming or arrival notes"></label>
+            </div>
+            <button class="button primary" type="submit">Save tent allotment</button>
+          </form>
+          <div class="allocation-list" id="allocationList" aria-live="polite"></div>
+        </article>
       </section>
 
       <section class="data-section" aria-labelledby="enquiryHeading">

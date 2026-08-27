@@ -9,7 +9,7 @@ Premium Ziro Festival campsite website with a Node.js backend for booking reques
 - Booking endpoint: `POST /api/bookings`
 - Booking storage: MySQL in production; JSON is a local-development fallback only when no database is configured
 - Booking invoices: each PDF is stored in MySQL with its booking record; `data/invoices/` is only used as a local-development fallback
-- Admin and CRM: `/admin` shows database-backed bookings, enquiries, campaign entries and leads with activity/follow-up tracking
+- Admin and CRM: `/admin` shows database-backed bookings, enquiries, campaign entries and leads with activity/follow-up tracking, tent inventory and tent allotments
 
 ## Local Run
 
@@ -59,7 +59,7 @@ Do not commit the real password to GitHub. Use Hostinger's Environment Variables
 
 ## Admin and CRM
 
-Open `/admin` and sign in with `ADMIN_USERNAME` and `ADMIN_PASSWORD`. Both values are required in Hostinger before the private area can be opened. The CRM supports manual leads, lead status, booking-reference linking, scheduled follow-ups, interaction notes and conversion of website enquiries into leads. The server creates the `leads` and `lead_activities` tables automatically; `database.sql` contains the same schema for manual setup.
+Open `/admin` and sign in with `ADMIN_USERNAME` and `ADMIN_PASSWORD`. Both values are required in Hostinger before the private area can be opened. The CRM supports manual leads, search and status filtering, booking-reference linking, scheduled follow-ups, interaction notes and conversion of website enquiries into leads. Tent Operations records each physical Dome, Alpine or Premium tent and lets staff allot it to a booking. An allotment is checked against the booked package's tent type, guest capacity, operational status and overlapping dates before it is saved. The server creates the `leads`, `lead_activities`, `tent_units` and `tent_allocations` tables automatically; `database.sql` contains the same schema for manual setup.
 
 The app creates the required tables automatically on first database use. You can also run `database.sql` manually in phpMyAdmin. The `/healthz` response returns HTTP 200 with `database: "ok"` only after it can connect to MySQL; a production database problem returns HTTP 503.
 

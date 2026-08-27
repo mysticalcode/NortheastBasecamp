@@ -78,6 +78,34 @@ CREATE TABLE IF NOT EXISTS lead_activities (
   INDEX lead_activities_lead_created (lead_id, created_at)
 );
 
+CREATE TABLE IF NOT EXISTS tent_units (
+  id VARCHAR(40) PRIMARY KEY,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  tent_code VARCHAR(64) NOT NULL UNIQUE,
+  tent_type VARCHAR(64) NOT NULL,
+  capacity INT NOT NULL,
+  operational_status VARCHAR(32) NOT NULL DEFAULT 'available',
+  notes TEXT NULL,
+  INDEX tent_units_type_status (tent_type, operational_status)
+);
+
+CREATE TABLE IF NOT EXISTS tent_allocations (
+  id VARCHAR(40) PRIMARY KEY,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  booking_reference VARCHAR(40) NOT NULL,
+  tent_id VARCHAR(40) NOT NULL,
+  guest_count INT NOT NULL,
+  arrival_date DATE NOT NULL,
+  departure_date DATE NOT NULL,
+  allocation_status VARCHAR(32) NOT NULL DEFAULT 'reserved',
+  notes TEXT NULL,
+  INDEX tent_allocations_booking (booking_reference),
+  INDEX tent_allocations_tent_dates (tent_id, arrival_date, departure_date),
+  INDEX tent_allocations_status (allocation_status)
+);
+
 CREATE TABLE IF NOT EXISTS storage_migrations (
   name VARCHAR(128) PRIMARY KEY,
   completed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
