@@ -1,5 +1,8 @@
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /admin.html
+Disallow: /api/admin/
 
 Sitemap: https://northeastbasecamp.com/sitemap.xml
 

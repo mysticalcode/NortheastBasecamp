@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { timingSafeEqual } from "node:crypto";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -41,6 +42,11 @@ const dbConfig = {
 };
 const hasDatabaseConfig = Boolean(databaseUrl || (dbConfig.host && dbConfig.user && dbConfig.password && dbConfig.database));
 const databaseRequired = process.env.NODE_ENV === "production" || process.env.REQUIRE_DATABASE === "true";
+const adminUsername = process.env.ADMIN_USERNAME || "";
+const adminPassword = process.env.ADMIN_PASSWORD || "";
+const leadStatuses = new Set(["new", "contacted", "qualified", "proposal", "won", "lost"]);
+const leadSources = new Set(["manual", "website-enquiry", "phone", "whatsapp", "instagram", "referral", "other"]);
+const activityTypes = new Set(["note", "call", "email", "whatsapp", "meeting", "status-update"]);
 let dbPoolPromise;
 
 class StorageUnavailableError extends Error {
@@ -69,6 +75,48 @@ const contentTypes = {
 function sendJson(res, status, payload) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(payload));
+}
+
+function isAdminRequestAuthorized(req) {
+  if (!adminUsername || !adminPassword) {
+    return false;
+  }
+
+  const authorization = req.headers.authorization || "";
+  if (!authorization.startsWith("Basic ")) {
+    return false;
+  }
+
+  const expected = Buffer.from(`${adminUsername}:${adminPassword}`);
+  const received = Buffer.from(authorization.slice(6), "base64");
+  return expected.length === received.length && timingSafeEqual(expected, received);
+}
+
+function requireAdmin(req, res) {
+  if (!adminUsername || !adminPassword) {
+    sendJson(res, 503, { ok: false, message: "Admin access is not configured." });
+    return false;
+  }
+
+  if (!isAdminRequestAuthorized(req)) {
+    res.writeHead(401, {
+      "Content-Type": "application/json; charset=utf-8",
+      "WWW-Authenticate": "Basic realm=\"Northeast Basecamp Admin\", charset=\"UTF-8\"",
+      "Cache-Control": "no-store"
+    });
+    res.end(JSON.stringify({ ok: false, message: "Admin sign-in required." }));
+    return false;
+  }
+
+  return true;
+}
+
+function cleanAdminId(value, prefix) {
+  const id = String(value || "").trim().toUpperCase();
+  if (!new RegExp(`^${prefix}-[A-Z0-9]+-[A-Z0-9]+$`).test(id)) {
+    throw new Error("Invalid record reference");
+  }
+  return id;
 }
 
 async function initializeDatabase(pool) {
@@ -153,6 +201,37 @@ async function initializeDatabase(pool) {
       phone VARCHAR(64) NOT NULL,
       booking_reference VARCHAR(40) NOT NULL,
       source VARCHAR(64) NOT NULL DEFAULT 'website'
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS leads (
+      id VARCHAR(40) PRIMARY KEY,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      status VARCHAR(32) NOT NULL DEFAULT 'new',
+      source VARCHAR(64) NOT NULL DEFAULT 'manual',
+      source_reference VARCHAR(64) NULL UNIQUE,
+      name VARCHAR(255) NOT NULL,
+      phone VARCHAR(64) NULL,
+      email VARCHAR(255) NULL,
+      subject VARCHAR(255) NULL,
+      notes TEXT NULL,
+      booking_reference VARCHAR(40) NULL,
+      next_follow_up_at DATETIME NULL,
+      INDEX leads_status_updated (status, updated_at),
+      INDEX leads_follow_up (next_follow_up_at)
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS lead_activities (
+      id VARCHAR(40) PRIMARY KEY,
+      lead_id VARCHAR(40) NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      activity_type VARCHAR(32) NOT NULL DEFAULT 'note',
+      note TEXT NOT NULL,
+      INDEX lead_activities_lead_created (lead_id, created_at)
     )
   `);
 
@@ -472,6 +551,84 @@ function cleanLuckyEntry(input) {
   };
 }
 
+function cleanOptionalText(value, maxLength = 255) {
+  const text = String(value || "").trim();
+  if (text.length > maxLength) {
+    throw new Error(`Please keep this field under ${maxLength} characters`);
+  }
+  return text;
+}
+
+function cleanLeadStatus(value) {
+  const status = String(value || "new").trim().toLowerCase();
+  if (!leadStatuses.has(status)) {
+    throw new Error("Please select a valid lead status");
+  }
+  return status;
+}
+
+function cleanLeadSource(value) {
+  const source = String(value || "manual").trim().toLowerCase();
+  if (!leadSources.has(source)) {
+    throw new Error("Please select a valid lead source");
+  }
+  return source;
+}
+
+function cleanFollowUpDate(value) {
+  const date = String(value || "").trim();
+  if (!date) {
+    return null;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2})?$/.test(date)) {
+    throw new Error("Please enter a valid follow-up date and time");
+  }
+  return `${date.replace("T", " ")}${date.length === 10 ? " 09:00" : ":00"}`;
+}
+
+function cleanLead(input) {
+  const lead = {
+    name: cleanOptionalText(input.name, 255),
+    phone: cleanOptionalText(input.phone, 64),
+    email: cleanOptionalText(input.email, 255).toLowerCase(),
+    subject: cleanOptionalText(input.subject, 255),
+    notes: cleanOptionalText(input.notes, 5000),
+    status: cleanLeadStatus(input.status),
+    source: cleanLeadSource(input.source),
+    bookingReference: cleanOptionalText(input.bookingReference, 40).toUpperCase(),
+    nextFollowUpAt: cleanFollowUpDate(input.nextFollowUpAt)
+  };
+
+  if (!lead.name) {
+    throw new Error("Lead name is required");
+  }
+  if (!lead.phone && !lead.email) {
+    throw new Error("Add a phone number or email address for this lead");
+  }
+  if (lead.phone) {
+    lead.phone = cleanPhone(lead.phone);
+  }
+  if (lead.email) {
+    lead.email = cleanEmail(lead.email);
+  }
+  if (lead.bookingReference && !/^NBC-[A-Z0-9]+-[A-Z0-9]+$/.test(lead.bookingReference)) {
+    throw new Error("Booking reference must match the invoice reference format");
+  }
+  return lead;
+}
+
+function cleanLeadActivity(input) {
+  const activityType = String(input.activityType || "note").trim().toLowerCase();
+  const note = cleanOptionalText(input.note, 5000);
+  if (!activityTypes.has(activityType)) {
+    throw new Error("Please select a valid activity type");
+  }
+  if (!note) {
+    throw new Error("Activity note is required");
+  }
+  return { activityType, note, status: input.status ? cleanLeadStatus(input.status) : null };
+}
+
 function createReference(prefix) {
   return `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 }
@@ -714,6 +871,183 @@ async function saveEnquiry(enquiry) {
   return record;
 }
 
+function httpError(message, statusCode = 400) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
+
+async function getAdminPool() {
+  const pool = await getStoragePool();
+  if (!pool) {
+    throw new StorageUnavailableError();
+  }
+  return pool;
+}
+
+async function getAdminDashboard() {
+  const pool = await getAdminPool();
+  const [[summary], [bookings], [enquiries], [contestEntries], [luckyEntries], [leads], [activities]] = await Promise.all([
+    pool.query(`
+      SELECT
+        (SELECT COUNT(*) FROM bookings) AS total_bookings,
+        (SELECT COUNT(*) FROM enquiries WHERE status = 'new') AS new_enquiries,
+        (SELECT COUNT(*) FROM leads WHERE status NOT IN ('won', 'lost')) AS open_leads,
+        (SELECT COUNT(*) FROM leads WHERE next_follow_up_at IS NOT NULL AND next_follow_up_at <= DATE_ADD(NOW(), INTERVAL 1 DAY) AND status NOT IN ('won', 'lost')) AS follow_ups_due,
+        (SELECT COUNT(*) FROM contest_entries) AS contest_entries,
+        (SELECT COUNT(*) FROM lucky_entries) AS lucky_entries
+    `),
+    pool.query(`
+      SELECT id, created_at, status, festival, plan, arrival_date, nights, guests, dinner_included, total_amount, name, phone, invoice_path,
+             CASE WHEN invoice_data IS NULL OR OCTET_LENGTH(invoice_data) = 0 THEN 0 ELSE 1 END AS invoice_stored
+      FROM bookings
+      ORDER BY created_at DESC
+      LIMIT 100
+    `),
+    pool.query(`
+      SELECT id, created_at, status, name, phone, email, subject, message, source
+      FROM enquiries
+      ORDER BY created_at DESC
+      LIMIT 100
+    `),
+    pool.query(`
+      SELECT id, created_at, status, instagram_url, email, phone
+      FROM contest_entries
+      ORDER BY created_at DESC
+      LIMIT 100
+    `),
+    pool.query(`
+      SELECT id, created_at, status, email, phone, booking_reference
+      FROM lucky_entries
+      ORDER BY created_at DESC
+      LIMIT 100
+    `),
+    pool.query(`
+      SELECT l.id, l.created_at, l.updated_at, l.status, l.source, l.source_reference, l.name, l.phone, l.email, l.subject, l.notes,
+             l.booking_reference, l.next_follow_up_at,
+             (SELECT MAX(a.created_at) FROM lead_activities a WHERE a.lead_id = l.id) AS last_activity_at
+      FROM leads l
+      ORDER BY CASE WHEN l.status IN ('won', 'lost') THEN 1 ELSE 0 END, l.next_follow_up_at IS NULL, l.next_follow_up_at ASC, l.updated_at DESC
+      LIMIT 200
+    `),
+    pool.query(`
+      SELECT id, lead_id, created_at, activity_type, note
+      FROM lead_activities
+      ORDER BY created_at DESC
+      LIMIT 500
+    `)
+  ]);
+
+  return { summary, bookings, enquiries, contestEntries, luckyEntries, leads, activities };
+}
+
+async function createAdminLead(input, sourceReference = null) {
+  const lead = cleanLead(input);
+  const pool = await getAdminPool();
+  const record = { id: createReference("NBL"), createdAt: new Date().toISOString(), ...lead, sourceReference };
+  await pool.execute(
+    `INSERT INTO leads
+      (id, created_at, status, source, source_reference, name, phone, email, subject, notes, booking_reference, next_follow_up_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      record.id,
+      record.createdAt.slice(0, 19).replace("T", " "),
+      record.status,
+      record.source,
+      record.sourceReference,
+      record.name,
+      record.phone || null,
+      record.email || null,
+      record.subject || null,
+      record.notes || null,
+      record.bookingReference || null,
+      record.nextFollowUpAt
+    ]
+  );
+
+  if (record.notes) {
+    await pool.execute(
+      "INSERT INTO lead_activities (id, lead_id, activity_type, note) VALUES (?, ?, ?, ?)",
+      [createReference("NBLA"), record.id, "note", "Lead created: " + record.notes]
+    );
+  }
+  return record;
+}
+
+async function updateAdminLead(leadId, input) {
+  const id = cleanAdminId(leadId, "NBL");
+  const lead = cleanLead(input);
+  const pool = await getAdminPool();
+  const [result] = await pool.execute(
+    `UPDATE leads
+     SET status = ?, source = ?, name = ?, phone = ?, email = ?, subject = ?, notes = ?, booking_reference = ?, next_follow_up_at = ?
+     WHERE id = ?`,
+    [lead.status, lead.source, lead.name, lead.phone || null, lead.email || null, lead.subject || null, lead.notes || null, lead.bookingReference || null, lead.nextFollowUpAt, id]
+  );
+  if (result.affectedRows === 0) {
+    throw httpError("Lead not found", 404);
+  }
+  return { id, ...lead };
+}
+
+async function addAdminLeadActivity(leadId, input) {
+  const id = cleanAdminId(leadId, "NBL");
+  const activity = cleanLeadActivity(input);
+  const pool = await getAdminPool();
+  const [leadRows] = await pool.execute("SELECT id FROM leads WHERE id = ? LIMIT 1", [id]);
+  if (leadRows.length === 0) {
+    throw httpError("Lead not found", 404);
+  }
+
+  const record = { id: createReference("NBLA"), leadId: id, createdAt: new Date().toISOString(), ...activity };
+  await pool.execute(
+    "INSERT INTO lead_activities (id, lead_id, created_at, activity_type, note) VALUES (?, ?, ?, ?, ?)",
+    [record.id, record.leadId, record.createdAt.slice(0, 19).replace("T", " "), record.activityType, record.note]
+  );
+  if (record.status) {
+    await pool.execute("UPDATE leads SET status = ? WHERE id = ?", [record.status, id]);
+  }
+  return record;
+}
+
+async function convertEnquiryToLead(enquiryId) {
+  const id = cleanAdminId(enquiryId, "NBE");
+  const pool = await getAdminPool();
+  const [existing] = await pool.execute("SELECT id FROM leads WHERE source_reference = ? LIMIT 1", [id]);
+  if (existing.length > 0) {
+    return { id: existing[0].id, existing: true };
+  }
+
+  const [enquiries] = await pool.execute(
+    "SELECT id, name, phone, email, subject, message FROM enquiries WHERE id = ? LIMIT 1",
+    [id]
+  );
+  if (enquiries.length === 0) {
+    throw httpError("Enquiry not found", 404);
+  }
+
+  const enquiry = enquiries[0];
+  const lead = await createAdminLead(
+    {
+      name: enquiry.name,
+      phone: enquiry.phone || "",
+      email: enquiry.email || "",
+      subject: enquiry.subject || "Website enquiry",
+      notes: enquiry.message || "",
+      status: "new",
+      source: "website-enquiry",
+      bookingReference: "",
+      nextFollowUpAt: ""
+    },
+    id
+  );
+  await pool.execute(
+    "INSERT INTO lead_activities (id, lead_id, activity_type, note) VALUES (?, ?, ?, ?)",
+    [createReference("NBLA"), lead.id, "status-update", `Converted from website enquiry ${id}`]
+  );
+  return lead;
+}
+
 async function serveStoredInvoice(req, res, pathname) {
   const match = /^\/data\/invoices\/(NBC-[A-Z0-9]+-[A-Z0-9]+)\.pdf$/i.exec(pathname);
   if (!match) {
@@ -780,6 +1114,63 @@ async function serveStatic(req, res) {
 
 const server = createServer(async (req, res) => {
   const requestUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+
+  if (req.method === "GET" && ["/admin", "/admin/", "/admin.html"].includes(requestUrl.pathname)) {
+    if (!requireAdmin(req, res)) {
+      return;
+    }
+    res.setHeader("Cache-Control", "no-store");
+    req.url = "/admin.html";
+    await serveStatic(req, res);
+    return;
+  }
+
+  if (requestUrl.pathname.startsWith("/api/admin/")) {
+    if (!requireAdmin(req, res)) {
+      return;
+    }
+    res.setHeader("Cache-Control", "no-store");
+
+    try {
+      if (req.method === "GET" && requestUrl.pathname === "/api/admin/dashboard") {
+        sendJson(res, 200, { ok: true, ...(await getAdminDashboard()) });
+        return;
+      }
+
+      if (req.method === "POST" && requestUrl.pathname === "/api/admin/leads") {
+        const record = await createAdminLead(await readJsonBody(req));
+        sendJson(res, 201, { ok: true, lead: record });
+        return;
+      }
+
+      const leadMatch = /^\/api\/admin\/leads\/([^/]+)$/.exec(requestUrl.pathname);
+      if (req.method === "PATCH" && leadMatch) {
+        const record = await updateAdminLead(leadMatch[1], await readJsonBody(req));
+        sendJson(res, 200, { ok: true, lead: record });
+        return;
+      }
+
+      const activityMatch = /^\/api\/admin\/leads\/([^/]+)\/activities$/.exec(requestUrl.pathname);
+      if (req.method === "POST" && activityMatch) {
+        const record = await addAdminLeadActivity(activityMatch[1], await readJsonBody(req));
+        sendJson(res, 201, { ok: true, activity: record });
+        return;
+      }
+
+      const enquiryMatch = /^\/api\/admin\/enquiries\/([^/]+)\/convert-to-lead$/.exec(requestUrl.pathname);
+      if (req.method === "POST" && enquiryMatch) {
+        const lead = await convertEnquiryToLead(enquiryMatch[1]);
+        sendJson(res, 201, { ok: true, lead });
+        return;
+      }
+
+      sendJson(res, 404, { ok: false, message: "Admin endpoint not found." });
+    } catch (error) {
+      console.error("Admin request failed.", error.message);
+      sendJson(res, error.statusCode || 400, { ok: false, message: error.message || "Admin request could not be completed." });
+    }
+    return;
+  }
 
   if (req.method === "GET" && (requestUrl.pathname === "/healthz" || requestUrl.pathname === "/health")) {
     const payload = { ok: true, service: "northeast-basecamp-site", storage: hasDatabaseConfig || databaseRequired ? "mysql" : "json" };

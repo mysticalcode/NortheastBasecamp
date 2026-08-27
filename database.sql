@@ -51,6 +51,33 @@ CREATE TABLE IF NOT EXISTS lucky_entries (
   source VARCHAR(64) NOT NULL DEFAULT 'website'
 );
 
+CREATE TABLE IF NOT EXISTS leads (
+  id VARCHAR(40) PRIMARY KEY,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  status VARCHAR(32) NOT NULL DEFAULT 'new',
+  source VARCHAR(64) NOT NULL DEFAULT 'manual',
+  source_reference VARCHAR(64) NULL UNIQUE,
+  name VARCHAR(255) NOT NULL,
+  phone VARCHAR(64) NULL,
+  email VARCHAR(255) NULL,
+  subject VARCHAR(255) NULL,
+  notes TEXT NULL,
+  booking_reference VARCHAR(40) NULL,
+  next_follow_up_at DATETIME NULL,
+  INDEX leads_status_updated (status, updated_at),
+  INDEX leads_follow_up (next_follow_up_at)
+);
+
+CREATE TABLE IF NOT EXISTS lead_activities (
+  id VARCHAR(40) PRIMARY KEY,
+  lead_id VARCHAR(40) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  activity_type VARCHAR(32) NOT NULL DEFAULT 'note',
+  note TEXT NOT NULL,
+  INDEX lead_activities_lead_created (lead_id, created_at)
+);
+
 CREATE TABLE IF NOT EXISTS storage_migrations (
   name VARCHAR(128) PRIMARY KEY,
   completed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

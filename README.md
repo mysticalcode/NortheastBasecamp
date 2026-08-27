@@ -9,6 +9,7 @@ Premium Ziro Festival campsite website with a Node.js backend for booking reques
 - Booking endpoint: `POST /api/bookings`
 - Booking storage: MySQL in production; JSON is a local-development fallback only when no database is configured
 - Booking invoices: each PDF is stored in MySQL with its booking record; `data/invoices/` is only used as a local-development fallback
+- Admin and CRM: `/admin` shows database-backed bookings, enquiries, campaign entries and leads with activity/follow-up tracking
 
 ## Local Run
 
@@ -50,9 +51,15 @@ DB_PASSWORD=your_database_password
 DB_NAME=u644575138_Northeastbase
 NODE_ENV=production
 REQUIRE_DATABASE=true
+ADMIN_USERNAME=your_private_admin_username
+ADMIN_PASSWORD=your_long_unique_admin_password
 ```
 
 Do not commit the real password to GitHub. Use Hostinger's Environment Variables screen or import a private `.env` file during deployment.
+
+## Admin and CRM
+
+Open `/admin` and sign in with `ADMIN_USERNAME` and `ADMIN_PASSWORD`. Both values are required in Hostinger before the private area can be opened. The CRM supports manual leads, lead status, booking-reference linking, scheduled follow-ups, interaction notes and conversion of website enquiries into leads. The server creates the `leads` and `lead_activities` tables automatically; `database.sql` contains the same schema for manual setup.
 
 The app creates the required tables automatically on first database use. You can also run `database.sql` manually in phpMyAdmin. The `/healthz` response returns HTTP 200 with `database: "ok"` only after it can connect to MySQL; a production database problem returns HTTP 503.
 
