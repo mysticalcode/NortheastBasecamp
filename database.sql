@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   invoice_path VARCHAR(255) NOT NULL,
   invoice_data LONGBLOB NULL,
   invoice_content_type VARCHAR(64) NULL,
+  deleted_at DATETIME NULL,
   source VARCHAR(64) NOT NULL DEFAULT 'website'
 );
 
@@ -65,6 +66,8 @@ CREATE TABLE IF NOT EXISTS leads (
   notes TEXT NULL,
   booking_reference VARCHAR(40) NULL,
   next_follow_up_at DATETIME NULL,
+  quoted_price INT NULL,
+  deleted_at DATETIME NULL,
   INDEX leads_status_updated (status, updated_at),
   INDEX leads_follow_up (next_follow_up_at)
 );

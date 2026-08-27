@@ -64,8 +64,9 @@
             <label>Interest / subject<input name="subject" maxlength="255" placeholder="Ziro stay, transport, group booking…"></label>
             <div class="form-row">
               <label>Booking reference <input name="bookingReference" maxlength="40" placeholder="NBC-…"></label>
-              <label>Next follow-up<input name="nextFollowUpAt" type="datetime-local"></label>
+              <label>Quoted price (INR)<input name="quotedPrice" type="number" min="0" max="10000000" step="1" inputmode="numeric" placeholder="e.g. 18000"></label>
             </div>
+            <label>Next follow-up<input name="nextFollowUpAt" type="datetime-local"></label>
             <label>Context and notes<textarea name="notes" rows="5" maxlength="5000" placeholder="What do they need? What should happen next?"></textarea></label>
             <button class="button primary" type="submit">Add lead to CRM</button>
           </form>
@@ -86,7 +87,7 @@
 
       <section class="data-section" aria-labelledby="bookingHeading">
         <div class="section-heading"><div><p class="eyebrow">Booking requests</p><h2 id="bookingHeading">Recent guest bookings</h2></div><span class="count-pill" id="bookingCount">0 records</span></div>
-        <div class="table-wrap"><table><thead><tr><th>Guest</th><th>Package</th><th>Stay</th><th>Total</th><th>Invoice</th><th>Allot tent</th><th>Requested</th></tr></thead><tbody id="bookingRows"></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>Guest</th><th>Package</th><th>Stay</th><th>Total</th><th>Invoice</th><th>Allot tent</th><th>Requested</th><th>Actions</th></tr></thead><tbody id="bookingRows"></tbody></table></div>
       </section>
 
       <section class="tent-layout" aria-label="Tent operations">
@@ -145,6 +146,12 @@
       <section class="secondary-grid" aria-label="Campaign entries">
         <article class="data-section compact"><div class="section-heading"><div><p class="eyebrow">Instagram contest</p><h2>Video entries</h2></div><span class="count-pill" id="contestCount">0</span></div><div class="mini-list" id="contestList"></div></article>
         <article class="data-section compact"><div class="section-heading"><div><p class="eyebrow">Lucky stay draw</p><h2>Booking entries</h2></div><span class="count-pill" id="luckyCount">0</span></div><div class="mini-list" id="luckyList"></div></article>
+      </section>
+
+      <section class="data-section compact recycle-bin" aria-labelledby="recycleHeading">
+        <div class="section-heading"><div><p class="eyebrow">Recycle bin</p><h2 id="recycleHeading">Deleted records</h2></div><span class="count-pill" id="archiveCount">0</span></div>
+        <p class="recycle-note">Deleting a lead or booking removes it from the active workspace. Records and booking invoices stay protected here until restored. Archived leads can also be permanently deleted with their interaction history.</p>
+        <div class="archive-list" id="archiveList"></div>
       </section>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>

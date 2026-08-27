@@ -142,6 +142,7 @@ async function initializeDatabase(pool) {
       invoice_path VARCHAR(255) NOT NULL,
       invoice_data LONGBLOB NULL,
       invoice_content_type VARCHAR(64) NULL,
+      deleted_at DATETIME NULL,
       source VARCHAR(64) NOT NULL DEFAULT 'website'
     )
   `);
@@ -161,7 +162,8 @@ async function initializeDatabase(pool) {
     ["total_amount", "INT NOT NULL DEFAULT 0"],
     ["invoice_path", "VARCHAR(255) NULL"],
     ["invoice_data", "LONGBLOB NULL"],
-    ["invoice_content_type", "VARCHAR(64) NULL"]
+    ["invoice_content_type", "VARCHAR(64) NULL"],
+    ["deleted_at", "DATETIME NULL"]
   ];
   for (const [name, definition] of requiredBookingColumns) {
     if (!bookingColumnNames.has(name)) {
@@ -222,10 +224,21 @@ async function initializeDatabase(pool) {
       notes TEXT NULL,
       booking_reference VARCHAR(40) NULL,
       next_follow_up_at DATETIME NULL,
+      quoted_price INT NULL,
+      deleted_at DATETIME NULL,
       INDEX leads_status_updated (status, updated_at),
       INDEX leads_follow_up (next_follow_up_at)
     )
   `);
+
+  const [leadColumns] = await pool.query("SHOW COLUMNS FROM leads");
+  const leadColumnNames = new Set(leadColumns.map((column) => column.Field));
+  if (!leadColumnNames.has("deleted_at")) {
+    await pool.query("ALTER TABLE leads ADD COLUMN deleted_at DATETIME NULL");
+  }
+  if (!leadColumnNames.has("quoted_price")) {
+    await pool.query("ALTER TABLE leads ADD COLUMN quoted_price INT NULL");
+  }
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS lead_activities (
@@ -621,6 +634,17 @@ function cleanFollowUpDate(value) {
   return `${date.replace("T", " ")}${date.length === 10 ? " 09:00" : ":00"}`;
 }
 
+function cleanQuotedPrice(value) {
+  const price = String(value ?? "").trim().replace(/[\s,]/g, "");
+  if (!price) {
+    return null;
+  }
+  if (!/^\d+$/.test(price) || !Number.isSafeInteger(Number(price)) || Number(price) > 10_000_000) {
+    throw new Error("Quoted price must be a whole amount up to INR 1,00,00,000");
+  }
+  return Number(price);
+}
+
 function cleanLead(input) {
   const lead = {
     name: cleanOptionalText(input.name, 255) || "Untitled lead",
@@ -628,6 +652,7 @@ function cleanLead(input) {
     email: cleanOptionalText(input.email, 255).toLowerCase(),
     subject: cleanOptionalText(input.subject, 255),
     notes: cleanOptionalText(input.notes, 5000),
+    quotedPrice: cleanQuotedPrice(input.quotedPrice),
     status: cleanLeadStatus(input.status),
     source: cleanLeadSource(input.source),
     bookingReference: cleanOptionalText(input.bookingReference, 40).toUpperCase(),
@@ -969,13 +994,13 @@ async function getAdminPool() {
 
 async function getAdminDashboard() {
   const pool = await getAdminPool();
-  const [[summary], [bookings], [enquiries], [contestEntries], [luckyEntries], [leads], [activities], [tentUnits], [tentAllocations]] = await Promise.all([
+  const [[summary], [bookings], [enquiries], [contestEntries], [luckyEntries], [leads], [activities], [tentUnits], [tentAllocations], [archivedLeads], [archivedBookings]] = await Promise.all([
     pool.query(`
       SELECT
-        (SELECT COUNT(*) FROM bookings) AS total_bookings,
+        (SELECT COUNT(*) FROM bookings WHERE deleted_at IS NULL) AS total_bookings,
         (SELECT COUNT(*) FROM enquiries WHERE status = 'new') AS new_enquiries,
-        (SELECT COUNT(*) FROM leads WHERE status NOT IN ('won', 'lost', 'completed')) AS open_leads,
-        (SELECT COUNT(*) FROM leads WHERE next_follow_up_at IS NOT NULL AND next_follow_up_at <= DATE_ADD(NOW(), INTERVAL 1 DAY) AND status NOT IN ('won', 'lost', 'completed')) AS follow_ups_due,
+        (SELECT COUNT(*) FROM leads WHERE deleted_at IS NULL AND status NOT IN ('won', 'lost', 'completed')) AS open_leads,
+        (SELECT COUNT(*) FROM leads WHERE deleted_at IS NULL AND next_follow_up_at IS NOT NULL AND next_follow_up_at <= DATE_ADD(NOW(), INTERVAL 1 DAY) AND status NOT IN ('won', 'lost', 'completed')) AS follow_ups_due,
         (SELECT COUNT(*) FROM contest_entries) AS contest_entries,
         (SELECT COUNT(*) FROM lucky_entries) AS lucky_entries,
         (SELECT COUNT(*) FROM tent_units) AS total_tents,
@@ -986,6 +1011,7 @@ async function getAdminDashboard() {
       SELECT id, created_at, status, festival, plan, arrival_date, nights, guests, dinner_included, total_amount, name, phone, invoice_path,
              CASE WHEN invoice_data IS NULL OR OCTET_LENGTH(invoice_data) = 0 THEN 0 ELSE 1 END AS invoice_stored
       FROM bookings
+      WHERE deleted_at IS NULL
       ORDER BY created_at DESC
       LIMIT 100
     `),
@@ -1008,10 +1034,11 @@ async function getAdminDashboard() {
       LIMIT 100
     `),
     pool.query(`
-      SELECT l.id, l.created_at, l.updated_at, l.status, l.source, l.source_reference, l.name, l.phone, l.email, l.subject, l.notes,
+      SELECT l.id, l.created_at, l.updated_at, l.status, l.source, l.source_reference, l.name, l.phone, l.email, l.subject, l.notes, l.quoted_price,
              l.booking_reference, l.next_follow_up_at,
              (SELECT MAX(a.created_at) FROM lead_activities a WHERE a.lead_id = l.id) AS last_activity_at
       FROM leads l
+      WHERE l.deleted_at IS NULL
       ORDER BY CASE WHEN l.status IN ('won', 'lost', 'completed') THEN 1 ELSE 0 END, l.next_follow_up_at IS NULL, l.next_follow_up_at ASC, l.updated_at DESC
       LIMIT 200
     `),
@@ -1038,6 +1065,20 @@ async function getAdminDashboard() {
       LEFT JOIN bookings b ON b.id = a.booking_reference
       ORDER BY CASE WHEN a.allocation_status IN ('reserved', 'checked-in') THEN 0 ELSE 1 END, a.arrival_date ASC, a.created_at DESC
       LIMIT 250
+    `),
+    pool.query(`
+      SELECT id, name, subject, deleted_at
+      FROM leads
+      WHERE deleted_at IS NOT NULL
+      ORDER BY deleted_at DESC
+      LIMIT 100
+    `),
+    pool.query(`
+      SELECT id, name, plan, deleted_at
+      FROM bookings
+      WHERE deleted_at IS NOT NULL
+      ORDER BY deleted_at DESC
+      LIMIT 100
     `)
   ]);
 
@@ -1054,7 +1095,9 @@ async function getAdminDashboard() {
     leads,
     activities,
     tentUnits,
-    tentAllocations
+    tentAllocations,
+    archivedLeads,
+    archivedBookings
   };
 }
 
@@ -1064,8 +1107,8 @@ async function createAdminLead(input, sourceReference = null) {
   const record = { id: createReference("NBL"), createdAt: new Date().toISOString(), ...lead, sourceReference };
   await pool.execute(
     `INSERT INTO leads
-      (id, created_at, status, source, source_reference, name, phone, email, subject, notes, booking_reference, next_follow_up_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, created_at, status, source, source_reference, name, phone, email, subject, notes, quoted_price, booking_reference, next_follow_up_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       record.id,
       record.createdAt.slice(0, 19).replace("T", " "),
@@ -1077,6 +1120,7 @@ async function createAdminLead(input, sourceReference = null) {
       record.email || null,
       record.subject || null,
       record.notes || null,
+      record.quotedPrice,
       record.bookingReference || null,
       record.nextFollowUpAt
     ]
@@ -1097,9 +1141,9 @@ async function updateAdminLead(leadId, input) {
   const pool = await getAdminPool();
   const [result] = await pool.execute(
     `UPDATE leads
-     SET status = ?, source = ?, name = ?, phone = ?, email = ?, subject = ?, notes = ?, booking_reference = ?, next_follow_up_at = ?
-     WHERE id = ?`,
-    [lead.status, lead.source, lead.name, lead.phone || null, lead.email || null, lead.subject || null, lead.notes || null, lead.bookingReference || null, lead.nextFollowUpAt, id]
+     SET status = ?, source = ?, name = ?, phone = ?, email = ?, subject = ?, notes = ?, quoted_price = ?, booking_reference = ?, next_follow_up_at = ?
+     WHERE id = ? AND deleted_at IS NULL`,
+    [lead.status, lead.source, lead.name, lead.phone || null, lead.email || null, lead.subject || null, lead.notes || null, lead.quotedPrice, lead.bookingReference || null, lead.nextFollowUpAt, id]
   );
   if (result.affectedRows === 0) {
     throw httpError("Lead not found", 404);
@@ -1111,7 +1155,7 @@ async function addAdminLeadActivity(leadId, input) {
   const id = cleanAdminId(leadId, "NBL");
   const activity = cleanLeadActivity(input);
   const pool = await getAdminPool();
-  const [leadRows] = await pool.execute("SELECT id FROM leads WHERE id = ? LIMIT 1", [id]);
+  const [leadRows] = await pool.execute("SELECT id FROM leads WHERE id = ? AND deleted_at IS NULL LIMIT 1", [id]);
   if (leadRows.length === 0) {
     throw httpError("Lead not found", 404);
   }
@@ -1130,8 +1174,12 @@ async function addAdminLeadActivity(leadId, input) {
 async function convertEnquiryToLead(enquiryId) {
   const id = cleanAdminId(enquiryId, "NBE");
   const pool = await getAdminPool();
-  const [existing] = await pool.execute("SELECT id FROM leads WHERE source_reference = ? LIMIT 1", [id]);
+  const [existing] = await pool.execute("SELECT id, deleted_at FROM leads WHERE source_reference = ? LIMIT 1", [id]);
   if (existing.length > 0) {
+    if (existing[0].deleted_at) {
+      await pool.execute("UPDATE leads SET deleted_at = NULL WHERE id = ?", [existing[0].id]);
+      return { id: existing[0].id, existing: true, restored: true };
+    }
     return { id: existing[0].id, existing: true };
   }
 
@@ -1163,6 +1211,85 @@ async function convertEnquiryToLead(enquiryId) {
     [createReference("NBLA"), lead.id, "status-update", `Converted from website enquiry ${id}`]
   );
   return lead;
+}
+
+async function archiveAdminLead(leadId) {
+  const id = cleanAdminId(leadId, "NBL");
+  const pool = await getAdminPool();
+  const [result] = await pool.execute("UPDATE leads SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL", [id]);
+  if (result.affectedRows === 0) {
+    throw httpError("Lead not found or already deleted", 404);
+  }
+  return { id };
+}
+
+async function restoreAdminLead(leadId) {
+  const id = cleanAdminId(leadId, "NBL");
+  const pool = await getAdminPool();
+  const [result] = await pool.execute("UPDATE leads SET deleted_at = NULL WHERE id = ? AND deleted_at IS NOT NULL", [id]);
+  if (result.affectedRows === 0) {
+    throw httpError("Deleted lead not found", 404);
+  }
+  return { id };
+}
+
+async function permanentlyDeleteAdminLead(leadId) {
+  const id = cleanAdminId(leadId, "NBL");
+  const pool = await getAdminPool();
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [leadRows] = await connection.execute(
+      "SELECT id FROM leads WHERE id = ? AND deleted_at IS NOT NULL FOR UPDATE",
+      [id]
+    );
+    if (leadRows.length === 0) {
+      throw httpError("Only archived leads can be permanently deleted", 404);
+    }
+    await connection.execute("DELETE FROM lead_activities WHERE lead_id = ?", [id]);
+    await connection.execute("DELETE FROM leads WHERE id = ? AND deleted_at IS NOT NULL", [id]);
+    await connection.commit();
+    return { id };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+async function archiveAdminBooking(bookingId) {
+  const id = cleanAdminId(bookingId, "NBC");
+  const pool = await getAdminPool();
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [result] = await connection.execute("UPDATE bookings SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL", [id]);
+    if (result.affectedRows === 0) {
+      throw httpError("Booking not found or already deleted", 404);
+    }
+    await connection.execute(
+      "UPDATE tent_allocations SET allocation_status = 'cancelled' WHERE booking_reference = ? AND allocation_status IN ('reserved', 'checked-in')",
+      [id]
+    );
+    await connection.commit();
+    return { id };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+async function restoreAdminBooking(bookingId) {
+  const id = cleanAdminId(bookingId, "NBC");
+  const pool = await getAdminPool();
+  const [result] = await pool.execute("UPDATE bookings SET deleted_at = NULL WHERE id = ? AND deleted_at IS NOT NULL", [id]);
+  if (result.affectedRows === 0) {
+    throw httpError("Deleted booking not found", 404);
+  }
+  return { id };
 }
 
 async function createTentUnit(input) {
@@ -1402,6 +1529,39 @@ const server = createServer(async (req, res) => {
       if (req.method === "PATCH" && leadMatch) {
         const record = await updateAdminLead(leadMatch[1], await readJsonBody(req));
         sendJson(res, 200, { ok: true, lead: record });
+        return;
+      }
+      if (req.method === "DELETE" && leadMatch) {
+        const record = await archiveAdminLead(leadMatch[1]);
+        sendJson(res, 200, { ok: true, lead: record });
+        return;
+      }
+
+      const restoreLeadMatch = /^\/api\/admin\/leads\/([^/]+)\/restore$/.exec(requestUrl.pathname);
+      if (req.method === "POST" && restoreLeadMatch) {
+        const record = await restoreAdminLead(restoreLeadMatch[1]);
+        sendJson(res, 200, { ok: true, lead: record });
+        return;
+      }
+
+      const permanentLeadMatch = /^\/api\/admin\/leads\/([^/]+)\/permanent$/.exec(requestUrl.pathname);
+      if (req.method === "DELETE" && permanentLeadMatch) {
+        const record = await permanentlyDeleteAdminLead(permanentLeadMatch[1]);
+        sendJson(res, 200, { ok: true, lead: record });
+        return;
+      }
+
+      const bookingMatch = /^\/api\/admin\/bookings\/([^/]+)$/.exec(requestUrl.pathname);
+      if (req.method === "DELETE" && bookingMatch) {
+        const record = await archiveAdminBooking(bookingMatch[1]);
+        sendJson(res, 200, { ok: true, booking: record });
+        return;
+      }
+
+      const restoreBookingMatch = /^\/api\/admin\/bookings\/([^/]+)\/restore$/.exec(requestUrl.pathname);
+      if (req.method === "POST" && restoreBookingMatch) {
+        const record = await restoreAdminBooking(restoreBookingMatch[1]);
+        sendJson(res, 200, { ok: true, booking: record });
         return;
       }
 
