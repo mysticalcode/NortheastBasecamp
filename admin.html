@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="admin.css">
+    <link rel="stylesheet" href="/admin.css?v=crm-20260903-1">
   </head>
   <body>
     <main class="admin-shell">
@@ -90,6 +90,30 @@
         <div class="table-wrap"><table><thead><tr><th>Guest</th><th>Package</th><th>Stay</th><th>Total</th><th>Invoice</th><th>Allot tent</th><th>Requested</th><th>Actions</th></tr></thead><tbody id="bookingRows"></tbody></table></div>
       </section>
 
+      <section class="data-section booking-operations" id="bookingOperationsPanel" aria-labelledby="bookingOperationsHeading">
+        <div class="section-heading"><div><p class="eyebrow">Guest operations</p><h2 id="bookingOperationsHeading">Complete the stay plan</h2></div><span class="count-pill">Private operational notes</span></div>
+        <p class="operations-intro">Add the information your booking tracker needs—payments, transport, meals, proof and staff coordination—without changing the guest’s invoice.</p>
+        <form id="bookingOperationsForm" class="admin-form">
+          <label>Booking<select id="bookingOperationsBooking" name="bookingReference" required><option value="">Choose a booking</option></select></label>
+          <p id="bookingOperationsSummary" class="operations-summary" aria-live="polite">Choose a booking to prepare its operations record.</p>
+          <fieldset id="bookingOperationsFields" disabled>
+            <div class="form-row"><label>Booking status<select name="bookingStatus"><option value="new">New request</option><option value="provisional">Provisional</option><option value="confirmed">Confirmed</option><option value="part-paid">Part paid</option><option value="paid">Paid in full</option><option value="checked-in">Checked in</option><option value="checked-out">Checked out</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label><label>Payment status<select name="paymentStatus"><option value="unpaid">Unpaid</option><option value="part-paid">Part paid</option><option value="paid">Paid</option><option value="refunded">Refunded</option></select></label></div>
+            <div class="form-row"><label>Guest email<input name="email" type="email" maxlength="255" placeholder="guest@example.com"></label><label>Full address<input name="fullAddress" maxlength="5000" placeholder="Address, city and state"></label></div>
+            <div class="form-row"><label>Tent number / code<input name="tentNumber" maxlength="64" placeholder="DM-1"></label><label>Assigned staff<input name="assignedStaff" maxlength="255" placeholder="Coordinator or host"></label></div>
+            <div class="form-row"><label>Rate per night (INR)<input name="ratePerNight" type="number" min="0" max="10000000" step="1" inputmode="numeric"></label><label>Stay amount (INR)<input name="stayAmount" type="number" min="0" max="10000000" step="1" inputmode="numeric"></label></div>
+            <div class="form-row"><label>Advance paid (INR)<input name="advancePaid" type="number" min="0" max="10000000" step="1" inputmode="numeric"></label><label>Booking source<input name="bookingSource" maxlength="128" placeholder="Website, B2B partner, referral…"></label></div>
+            <div class="operations-block"><div class="operations-block-heading"><h3>Pickup</h3><label class="switch-field"><input name="pickupRequired" type="checkbox"><span>Required</span></label></div><div class="form-row"><label>City / point<input name="pickupPoint" maxlength="255" placeholder="Airport, station or hotel"></label><label>Date<input name="pickupDate" type="date"></label></div><label>Time<input name="pickupTime" type="time"></label></div>
+            <div class="operations-block"><div class="operations-block-heading"><h3>Drop</h3><label class="switch-field"><input name="dropRequired" type="checkbox"><span>Required</span></label></div><div class="form-row"><label>City / point<input name="dropPoint" maxlength="255" placeholder="Airport, station or hotel"></label><label>Date<input name="dropDate" type="date"></label></div><label>Time<input name="dropTime" type="time"></label></div>
+            <div class="form-row"><label>Transport amount (INR)<input name="transportAmount" type="number" min="0" max="10000000" step="1" inputmode="numeric"></label><label>Meal preference<input name="mealPreference" maxlength="64" placeholder="No meals, vegetarian, vegan…"></label></div>
+            <div class="form-row"><label>Lunch quantity / day<input name="lunchQtyPerDay" type="number" min="0" max="100" step="1" inputmode="numeric"></label><label>Dinner quantity / day<input name="dinnerQtyPerDay" type="number" min="0" max="100" step="1" inputmode="numeric"></label></div>
+            <div class="form-row"><label>Meal amount (INR)<input name="mealAmount" type="number" min="0" max="10000000" step="1" inputmode="numeric"></label><label>ID proof status<select name="idProofStatus"><option value="pending">Pending</option><option value="received">Received</option><option value="verified">Verified</option><option value="not-required">Not required</option></select></label></div>
+            <label>Special requests / allergies<textarea name="specialRequests" rows="3" maxlength="5000" placeholder="Guest preferences, dietary needs or accessibility requests"></textarea></label>
+            <label>Internal notes<textarea name="internalNotes" rows="4" maxlength="5000" placeholder="Private handover notes for the camp team"></textarea></label>
+            <button class="button primary" type="submit">Save booking operations</button>
+          </fieldset>
+        </form>
+      </section>
+
       <section class="tent-layout" aria-label="Tent operations">
         <article class="panel tent-capture">
           <div class="panel-heading">
@@ -155,6 +179,6 @@
       </section>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="admin.js" defer></script>
+    <script src="/admin.js?v=crm-20260903-1" defer></script>
   </body>
 </html>

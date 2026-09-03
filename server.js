@@ -47,6 +47,9 @@ const adminPassword = process.env.ADMIN_PASSWORD || "";
 const leadStatuses = new Set(["new", "contacted", "waiting", "qualified", "proposal", "booking-requested", "booking-confirmed", "payment-pending", "paid", "checked-in", "completed", "won", "lost"]);
 const leadSources = new Set(["manual", "website-enquiry", "phone", "whatsapp", "instagram", "referral", "other"]);
 const activityTypes = new Set(["note", "call", "email", "whatsapp", "meeting", "status-update"]);
+const bookingStatuses = new Set(["new", "provisional", "confirmed", "part-paid", "paid", "checked-in", "checked-out", "completed", "cancelled"]);
+const paymentStatuses = new Set(["unpaid", "part-paid", "paid", "refunded"]);
+const idProofStatuses = new Set(["pending", "received", "verified", "not-required"]);
 const tentTypes = new Set(["Dome Tent", "Alpine Tent", "Premium Tent"]);
 const tentOperationalStatuses = new Set(["available", "maintenance", "retired"]);
 const allocationStatuses = new Set(["reserved", "checked-in", "checked-out", "cancelled"]);
@@ -182,6 +185,40 @@ async function initializeDatabase(pool) {
       subject VARCHAR(255) NULL,
       message TEXT NOT NULL,
       source VARCHAR(64) NOT NULL DEFAULT 'website'
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS booking_operations (
+      booking_reference VARCHAR(40) PRIMARY KEY,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      full_address TEXT NULL,
+      email VARCHAR(255) NULL,
+      tent_number VARCHAR(64) NULL,
+      rate_per_night INT NULL,
+      stay_amount INT NULL,
+      pickup_required TINYINT(1) NOT NULL DEFAULT 0,
+      pickup_point VARCHAR(255) NULL,
+      pickup_date DATE NULL,
+      pickup_time VARCHAR(5) NULL,
+      drop_required TINYINT(1) NOT NULL DEFAULT 0,
+      drop_point VARCHAR(255) NULL,
+      drop_date DATE NULL,
+      drop_time VARCHAR(5) NULL,
+      transport_amount INT NOT NULL DEFAULT 0,
+      meal_preference VARCHAR(64) NULL,
+      lunch_qty_per_day INT NOT NULL DEFAULT 0,
+      dinner_qty_per_day INT NOT NULL DEFAULT 0,
+      meal_amount INT NOT NULL DEFAULT 0,
+      advance_paid INT NOT NULL DEFAULT 0,
+      payment_status VARCHAR(32) NOT NULL DEFAULT 'unpaid',
+      booking_source VARCHAR(128) NULL,
+      id_proof_status VARCHAR(32) NOT NULL DEFAULT 'pending',
+      special_requests TEXT NULL,
+      assigned_staff VARCHAR(255) NULL,
+      internal_notes TEXT NULL,
+      INDEX booking_operations_payment_status (payment_status),
+      INDEX booking_operations_staff (assigned_staff)
     )
   `);
 
@@ -736,6 +773,88 @@ function cleanTentAllocation(input) {
   return { bookingReference, tentId, guestCount, arrivalDate, departureDate, allocationStatus, notes };
 }
 
+function cleanOptionalIsoDate(value, fieldName) {
+  const date = String(value || "").trim();
+  return date ? cleanIsoDate(date, fieldName) : null;
+}
+
+function cleanOptionalTime(value, fieldName) {
+  const time = String(value || "").trim();
+  if (!time) {
+    return null;
+  }
+  if (!/^\d{2}:\d{2}$/.test(time)) {
+    throw new Error(`${fieldName} must use the HH:MM format`);
+  }
+  return time;
+}
+
+function cleanOptionalMoney(value, fieldName) {
+  const amount = String(value ?? "").trim().replace(/[\s,]/g, "");
+  if (!amount) {
+    return null;
+  }
+  if (!/^\d+$/.test(amount) || !Number.isSafeInteger(Number(amount)) || Number(amount) > 10_000_000) {
+    throw new Error(`${fieldName} must be a whole amount up to INR 1,00,00,000`);
+  }
+  return Number(amount);
+}
+
+function cleanNonNegativeQuantity(value, fieldName) {
+  const quantity = String(value ?? "").trim();
+  if (!quantity) {
+    return 0;
+  }
+  if (!/^\d+$/.test(quantity) || Number(quantity) > 100) {
+    throw new Error(`${fieldName} must be between 0 and 100`);
+  }
+  return Number(quantity);
+}
+
+function cleanBookingOperations(input) {
+  const bookingStatus = String(input.bookingStatus || "new").trim().toLowerCase();
+  const paymentStatus = String(input.paymentStatus || "unpaid").trim().toLowerCase();
+  const idProofStatus = String(input.idProofStatus || "pending").trim().toLowerCase();
+  if (!bookingStatuses.has(bookingStatus)) {
+    throw new Error("Please select a valid booking status");
+  }
+  if (!paymentStatuses.has(paymentStatus)) {
+    throw new Error("Please select a valid payment status");
+  }
+  if (!idProofStatuses.has(idProofStatus)) {
+    throw new Error("Please select a valid ID proof status");
+  }
+  const readToggle = (value) => [true, "true", "1", "yes", "on"].includes(value);
+  return {
+    bookingStatus,
+    fullAddress: cleanOptionalText(input.fullAddress, 5000),
+    email: cleanOptionalText(input.email, 255).toLowerCase(),
+    tentNumber: cleanOptionalText(input.tentNumber, 64),
+    ratePerNight: cleanOptionalMoney(input.ratePerNight, "Rate per night"),
+    stayAmount: cleanOptionalMoney(input.stayAmount, "Stay amount"),
+    pickupRequired: readToggle(input.pickupRequired),
+    pickupPoint: cleanOptionalText(input.pickupPoint, 255),
+    pickupDate: cleanOptionalIsoDate(input.pickupDate, "Pickup date"),
+    pickupTime: cleanOptionalTime(input.pickupTime, "Pickup time"),
+    dropRequired: readToggle(input.dropRequired),
+    dropPoint: cleanOptionalText(input.dropPoint, 255),
+    dropDate: cleanOptionalIsoDate(input.dropDate, "Drop date"),
+    dropTime: cleanOptionalTime(input.dropTime, "Drop time"),
+    transportAmount: cleanOptionalMoney(input.transportAmount, "Transport amount") || 0,
+    mealPreference: cleanOptionalText(input.mealPreference, 64),
+    lunchQtyPerDay: cleanNonNegativeQuantity(input.lunchQtyPerDay, "Lunch quantity per day"),
+    dinnerQtyPerDay: cleanNonNegativeQuantity(input.dinnerQtyPerDay, "Dinner quantity per day"),
+    mealAmount: cleanOptionalMoney(input.mealAmount, "Meal amount") || 0,
+    advancePaid: cleanOptionalMoney(input.advancePaid, "Advance paid") || 0,
+    paymentStatus,
+    bookingSource: cleanOptionalText(input.bookingSource, 128),
+    idProofStatus,
+    specialRequests: cleanOptionalText(input.specialRequests, 5000),
+    assignedStaff: cleanOptionalText(input.assignedStaff, 255),
+    internalNotes: cleanOptionalText(input.internalNotes, 5000)
+  };
+}
+
 function createReference(prefix) {
   return `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 }
@@ -1008,11 +1127,19 @@ async function getAdminDashboard() {
         (SELECT COUNT(*) FROM tent_allocations WHERE allocation_status IN ('reserved', 'checked-in')) AS active_allocations
     `),
     pool.query(`
-      SELECT id, created_at, status, festival, plan, arrival_date, nights, guests, dinner_included, total_amount, name, phone, invoice_path,
-             CASE WHEN invoice_data IS NULL OR OCTET_LENGTH(invoice_data) = 0 THEN 0 ELSE 1 END AS invoice_stored
-      FROM bookings
-      WHERE deleted_at IS NULL
-      ORDER BY created_at DESC
+      SELECT b.id, b.created_at, b.status, b.source, b.festival, b.plan, b.arrival_date, b.nights, b.guests, b.dinner_included,
+             b.base_amount, b.dinner_amount, b.total_amount, b.name, b.phone, b.invoice_path,
+             CASE WHEN b.invoice_data IS NULL OR OCTET_LENGTH(b.invoice_data) = 0 THEN 0 ELSE 1 END AS invoice_stored,
+             o.full_address, o.email AS operations_email, o.tent_number, o.rate_per_night, o.stay_amount,
+             o.pickup_required, o.pickup_point, o.pickup_date, o.pickup_time,
+             o.drop_required, o.drop_point, o.drop_date, o.drop_time, o.transport_amount,
+             o.meal_preference, o.lunch_qty_per_day, o.dinner_qty_per_day, o.meal_amount,
+             o.advance_paid, o.payment_status, o.booking_source, o.id_proof_status,
+             o.special_requests, o.assigned_staff, o.internal_notes, o.updated_at AS operations_updated_at
+      FROM bookings b
+      LEFT JOIN booking_operations o ON o.booking_reference = b.id
+      WHERE b.deleted_at IS NULL
+      ORDER BY b.created_at DESC
       LIMIT 100
     `),
     pool.query(`
@@ -1085,9 +1212,53 @@ async function getAdminDashboard() {
   return {
     summary,
     bookings: bookings.map((booking) => ({
-      ...booking,
+      id: booking.id,
+      created_at: booking.created_at,
+      status: booking.status,
+      source: booking.source || "",
+      festival: booking.festival,
+      plan: booking.plan,
+      arrival_date: booking.arrival_date,
+      nights: booking.nights,
+      guests: booking.guests,
+      dinner_included: booking.dinner_included,
+      base_amount: booking.base_amount,
+      dinner_amount: booking.dinner_amount,
+      total_amount: booking.total_amount,
+      name: booking.name,
+      phone: booking.phone,
+      invoice_path: booking.invoice_path,
+      invoice_stored: booking.invoice_stored,
       tent_type: planDetails[booking.plan]?.tentType || null,
-      tent_sharing: planDetails[booking.plan]?.sharing || null
+      tent_sharing: planDetails[booking.plan]?.sharing || null,
+      operations: {
+        fullAddress: booking.full_address || "",
+        email: booking.operations_email || "",
+        tentNumber: booking.tent_number || "",
+        ratePerNight: booking.rate_per_night,
+        stayAmount: booking.stay_amount,
+        pickupRequired: Boolean(booking.pickup_required),
+        pickupPoint: booking.pickup_point || "",
+        pickupDate: booking.pickup_date || "",
+        pickupTime: booking.pickup_time || "",
+        dropRequired: Boolean(booking.drop_required),
+        dropPoint: booking.drop_point || "",
+        dropDate: booking.drop_date || "",
+        dropTime: booking.drop_time || "",
+        transportAmount: booking.transport_amount || 0,
+        mealPreference: booking.meal_preference || "",
+        lunchQtyPerDay: booking.lunch_qty_per_day || 0,
+        dinnerQtyPerDay: booking.dinner_qty_per_day || 0,
+        mealAmount: booking.meal_amount,
+        advancePaid: booking.advance_paid || 0,
+        paymentStatus: booking.payment_status || "unpaid",
+        bookingSource: booking.booking_source || "",
+        idProofStatus: booking.id_proof_status || "pending",
+        specialRequests: booking.special_requests || "",
+        assignedStaff: booking.assigned_staff || "",
+        internalNotes: booking.internal_notes || "",
+        updatedAt: booking.operations_updated_at || null
+      }
     })),
     enquiries,
     contestEntries,
@@ -1139,14 +1310,21 @@ async function updateAdminLead(leadId, input) {
   const id = cleanAdminId(leadId, "NBL");
   const lead = cleanLead(input);
   const pool = await getAdminPool();
+  const [existingRows] = await pool.execute("SELECT id, status FROM leads WHERE id = ? AND deleted_at IS NULL LIMIT 1", [id]);
+  if (existingRows.length === 0) {
+    throw httpError("Lead not found", 404);
+  }
   const [result] = await pool.execute(
     `UPDATE leads
      SET status = ?, source = ?, name = ?, phone = ?, email = ?, subject = ?, notes = ?, quoted_price = ?, booking_reference = ?, next_follow_up_at = ?
      WHERE id = ? AND deleted_at IS NULL`,
     [lead.status, lead.source, lead.name, lead.phone || null, lead.email || null, lead.subject || null, lead.notes || null, lead.quotedPrice, lead.bookingReference || null, lead.nextFollowUpAt, id]
   );
-  if (result.affectedRows === 0) {
-    throw httpError("Lead not found", 404);
+  if (existingRows[0].status !== lead.status) {
+    await pool.execute(
+      "INSERT INTO lead_activities (id, lead_id, activity_type, note) VALUES (?, ?, ?, ?)",
+      [createReference("NBLA"), id, "status-update", `Status changed from ${existingRows[0].status} to ${lead.status}`]
+    );
   }
   return { id, ...lead };
 }
@@ -1176,6 +1354,7 @@ async function convertEnquiryToLead(enquiryId) {
   const pool = await getAdminPool();
   const [existing] = await pool.execute("SELECT id, deleted_at FROM leads WHERE source_reference = ? LIMIT 1", [id]);
   if (existing.length > 0) {
+    await pool.execute("UPDATE enquiries SET status = 'converted' WHERE id = ?", [id]);
     if (existing[0].deleted_at) {
       await pool.execute("UPDATE leads SET deleted_at = NULL WHERE id = ?", [existing[0].id]);
       return { id: existing[0].id, existing: true, restored: true };
@@ -1210,6 +1389,7 @@ async function convertEnquiryToLead(enquiryId) {
     "INSERT INTO lead_activities (id, lead_id, activity_type, note) VALUES (?, ?, ?, ?)",
     [createReference("NBLA"), lead.id, "status-update", `Converted from website enquiry ${id}`]
   );
+  await pool.execute("UPDATE enquiries SET status = 'converted' WHERE id = ?", [id]);
   return lead;
 }
 
@@ -1292,6 +1472,63 @@ async function restoreAdminBooking(bookingId) {
   return { id };
 }
 
+async function updateBookingOperations(bookingId, input) {
+  const id = cleanAdminId(bookingId, "NBC");
+  const operations = cleanBookingOperations(input);
+  if (operations.email) {
+    operations.email = cleanEmail(operations.email);
+  }
+  const pool = await getAdminPool();
+  const connection = await pool.getConnection();
+  let transactionStarted = false;
+  try {
+    await connection.beginTransaction();
+    transactionStarted = true;
+    const [bookings] = await connection.execute("SELECT id FROM bookings WHERE id = ? AND deleted_at IS NULL LIMIT 1 FOR UPDATE", [id]);
+    if (bookings.length === 0) {
+      throw httpError("Booking not found", 404);
+    }
+    await connection.execute("UPDATE bookings SET status = ? WHERE id = ?", [operations.bookingStatus, id]);
+    await connection.execute(
+      `INSERT INTO booking_operations
+        (booking_reference, full_address, email, tent_number, rate_per_night, stay_amount,
+         pickup_required, pickup_point, pickup_date, pickup_time, drop_required, drop_point, drop_date, drop_time,
+         transport_amount, meal_preference, lunch_qty_per_day, dinner_qty_per_day, meal_amount,
+         advance_paid, payment_status, booking_source, id_proof_status, special_requests, assigned_staff, internal_notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         full_address = VALUES(full_address), email = VALUES(email), tent_number = VALUES(tent_number),
+         rate_per_night = VALUES(rate_per_night), stay_amount = VALUES(stay_amount), pickup_required = VALUES(pickup_required),
+         pickup_point = VALUES(pickup_point), pickup_date = VALUES(pickup_date), pickup_time = VALUES(pickup_time),
+         drop_required = VALUES(drop_required), drop_point = VALUES(drop_point), drop_date = VALUES(drop_date), drop_time = VALUES(drop_time),
+         transport_amount = VALUES(transport_amount), meal_preference = VALUES(meal_preference),
+         lunch_qty_per_day = VALUES(lunch_qty_per_day), dinner_qty_per_day = VALUES(dinner_qty_per_day), meal_amount = VALUES(meal_amount),
+         advance_paid = VALUES(advance_paid), payment_status = VALUES(payment_status), booking_source = VALUES(booking_source),
+         id_proof_status = VALUES(id_proof_status), special_requests = VALUES(special_requests),
+         assigned_staff = VALUES(assigned_staff), internal_notes = VALUES(internal_notes)`,
+      [
+        id, operations.fullAddress || null, operations.email || null, operations.tentNumber || null,
+        operations.ratePerNight, operations.stayAmount, operations.pickupRequired ? 1 : 0,
+        operations.pickupPoint || null, operations.pickupDate, operations.pickupTime,
+        operations.dropRequired ? 1 : 0, operations.dropPoint || null, operations.dropDate, operations.dropTime,
+        operations.transportAmount, operations.mealPreference || null, operations.lunchQtyPerDay, operations.dinnerQtyPerDay,
+        operations.mealAmount, operations.advancePaid, operations.paymentStatus, operations.bookingSource || null,
+        operations.idProofStatus, operations.specialRequests || null, operations.assignedStaff || null, operations.internalNotes || null
+      ]
+    );
+    await connection.commit();
+    transactionStarted = false;
+  } catch (error) {
+    if (transactionStarted) {
+      await connection.rollback();
+    }
+    throw error;
+  } finally {
+    connection.release();
+  }
+  return { id, ...operations };
+}
+
 async function createTentUnit(input) {
   const tent = cleanTentUnit(input);
   const pool = await getAdminPool();
@@ -1336,7 +1573,7 @@ async function updateTentUnit(tentId, input) {
 
 async function assertTentAllocation(pool, allocation, allocationId = null) {
   const [bookingRows] = await pool.execute(
-    "SELECT id, plan, guests, arrival_date, nights FROM bookings WHERE id = ? LIMIT 1",
+    "SELECT id, plan, guests, arrival_date, nights FROM bookings WHERE id = ? AND deleted_at IS NULL LIMIT 1",
     [allocation.bookingReference]
   );
   if (bookingRows.length === 0) {
@@ -1555,6 +1792,13 @@ const server = createServer(async (req, res) => {
       if (req.method === "DELETE" && bookingMatch) {
         const record = await archiveAdminBooking(bookingMatch[1]);
         sendJson(res, 200, { ok: true, booking: record });
+        return;
+      }
+
+      const bookingOperationsMatch = /^\/api\/admin\/bookings\/([^/]+)\/operations$/.exec(requestUrl.pathname);
+      if (req.method === "PATCH" && bookingOperationsMatch) {
+        const record = await updateBookingOperations(bookingOperationsMatch[1], await readJsonBody(req));
+        sendJson(res, 200, { ok: true, operations: record });
         return;
       }
 

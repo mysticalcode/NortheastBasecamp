@@ -1,10 +1,10 @@
-const state = { dashboard: null, loading: false, leadSearch: "", leadStatus: "" };
+const state = { dashboard: null, loading: false, leadSearch: "", leadStatus: "", bookingOperationsId: "" };
 const statusLabels = { new: "New", contacted: "Contacted", waiting: "Waiting for guest", qualified: "Qualified", proposal: "Proposal sent", "booking-requested": "Booking requested", "booking-confirmed": "Booking confirmed", "payment-pending": "Payment pending", paid: "Payment received", "checked-in": "Checked in", completed: "Completed stay", won: "Won", lost: "Lost" };
 const tentStatusLabels = { available: "Available", maintenance: "Maintenance", retired: "Retired" };
 const allocationStatusLabels = { reserved: "Reserved", "checked-in": "Checked in", "checked-out": "Checked out", cancelled: "Cancelled" };
 
 const elements = {
-  connection: document.querySelector("#connectionStatus"), refresh: document.querySelector("#refreshButton"), leadForm: document.querySelector("#leadForm"), leadList: document.querySelector("#leadList"), leadSearch: document.querySelector("#leadSearch"), leadStatusFilter: document.querySelector("#leadStatusFilter"), bookingRows: document.querySelector("#bookingRows"), enquiryList: document.querySelector("#enquiryList"), contestList: document.querySelector("#contestList"), luckyList: document.querySelector("#luckyList"), tentForm: document.querySelector("#tentForm"), tentInventory: document.querySelector("#tentInventory"), allocationForm: document.querySelector("#allocationForm"), allocationBooking: document.querySelector("#allocationBooking"), allocationTent: document.querySelector("#allocationTent"), allocationGuests: document.querySelector("#allocationGuests"), allocationArrival: document.querySelector("#allocationArrival"), allocationDeparture: document.querySelector("#allocationDeparture"), allocationList: document.querySelector("#allocationList"), archiveList: document.querySelector("#archiveList"), toast: document.querySelector("#toast")
+  connection: document.querySelector("#connectionStatus"), refresh: document.querySelector("#refreshButton"), leadForm: document.querySelector("#leadForm"), leadList: document.querySelector("#leadList"), leadSearch: document.querySelector("#leadSearch"), leadStatusFilter: document.querySelector("#leadStatusFilter"), bookingRows: document.querySelector("#bookingRows"), bookingOperationsForm: document.querySelector("#bookingOperationsForm"), bookingOperationsBooking: document.querySelector("#bookingOperationsBooking"), bookingOperationsFields: document.querySelector("#bookingOperationsFields"), bookingOperationsSummary: document.querySelector("#bookingOperationsSummary"), enquiryList: document.querySelector("#enquiryList"), contestList: document.querySelector("#contestList"), luckyList: document.querySelector("#luckyList"), tentForm: document.querySelector("#tentForm"), tentInventory: document.querySelector("#tentInventory"), allocationForm: document.querySelector("#allocationForm"), allocationBooking: document.querySelector("#allocationBooking"), allocationTent: document.querySelector("#allocationTent"), allocationGuests: document.querySelector("#allocationGuests"), allocationArrival: document.querySelector("#allocationArrival"), allocationDeparture: document.querySelector("#allocationDeparture"), allocationList: document.querySelector("#allocationList"), archiveList: document.querySelector("#archiveList"), toast: document.querySelector("#toast")
 };
 
 function escapeHtml(value = "") { return String(value).replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]); }
@@ -20,13 +20,14 @@ function showToast(message, isError = false) { elements.toast.textContent = mess
 async function api(path, options = {}) { const response = await fetch(path, { ...options, headers: { "Content-Type": "application/json", ...(options.headers || {}) }, cache: "no-store" }); const payload = await response.json().catch(() => ({})); if (!response.ok || !payload.ok) throw new Error(payload.message || "Request could not be completed."); return payload; }
 function optionList(labels, current) { return Object.entries(labels).map(([value, label]) => `<option value="${value}" ${value === current ? "selected" : ""}>${label}</option>`).join(""); }
 function leadSourceOptions(current) { const choices = [["manual", "Manual"], ["website-enquiry", "Website enquiry"], ["phone", "Phone"], ["whatsapp", "WhatsApp"], ["instagram", "Instagram"], ["referral", "Referral"], ["other", "Other"]]; return choices.map(([value, label]) => `<option value="${value}" ${value === current ? "selected" : ""}>${label}</option>`).join(""); }
+function deleteIconButton(recordType, id, name = "") { const attribute = recordType === "lead" ? "data-delete-lead" : "data-delete-booking"; const label = `Move this ${recordType}${name ? ` for ${name}` : ""} to the recycle bin`; const manage = recordType === "booking" ? `<button class="button ghost small" type="button" data-manage-booking="${escapeHtml(id)}">Manage</button>` : ""; return `${manage}<button class="icon-button danger" type="button" ${attribute}="${escapeHtml(id)}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}"><span class="trash-glyph" aria-hidden="true"></span><span class="visually-hidden">${escapeHtml(label)}</span></button>`; }
 
 function activityMarkup(lead, activities) { const entries = activities.filter((activity) => activity.lead_id === lead.id).slice(0, 6); return entries.length ? entries.map((activity) => `<li><time>${escapeHtml(formatDate(activity.created_at))} · ${escapeHtml(activity.activity_type)}</time>${escapeHtml(activity.note)}</li>`).join("") : "<li>No interactions logged yet.</li>"; }
 function renderLead(lead, activities) {
   const contact = [lead.phone, lead.email].filter(Boolean).join(" · ") || "No contact details";
   const followUp = lead.next_follow_up_at ? `Follow up ${formatDate(lead.next_follow_up_at)}` : "No follow-up scheduled";
   const summary = [lead.subject || contact, lead.quoted_price !== null && lead.quoted_price !== undefined ? `Quote ${inr(lead.quoted_price)}` : ""].filter(Boolean).join(" · ");
-  return `<details class="lead-card" data-lead-id="${escapeHtml(lead.id)}"><summary><div class="lead-title"><strong>${escapeHtml(lead.name)}</strong><span>${escapeHtml(summary)}</span></div><div class="lead-meta"><span class="status ${escapeHtml(lead.status)}">${escapeHtml(statusLabels[lead.status] || lead.status)}</span><span>${escapeHtml(followUp)}</span></div></summary><form class="lead-edit" data-lead-update><div class="form-row"><label>Name<input name="name" value="${escapeHtml(lead.name)}"></label><label>Phone<input name="phone" value="${escapeHtml(lead.phone || "")}"></label></div><div class="form-row"><label>Email<input name="email" type="email" value="${escapeHtml(lead.email || "")}"></label><label>Subject<input name="subject" value="${escapeHtml(lead.subject || "")}"></label></div><div class="form-row"><label>Status<select name="status">${optionList(statusLabels, lead.status)}</select></label><label>Source<select name="source">${leadSourceOptions(lead.source)}</select></label></div><div class="form-row"><label>Booking reference<input name="bookingReference" value="${escapeHtml(lead.booking_reference || "")}"></label><label>Quoted price (INR)<input name="quotedPrice" type="number" min="0" max="10000000" step="1" inputmode="numeric" value="${escapeHtml(lead.quoted_price ?? "")}"></label></div><label>Next follow-up<input name="nextFollowUpAt" type="datetime-local" value="${escapeHtml(toDateInput(lead.next_follow_up_at))}"></label><label>Lead notes<textarea name="notes" rows="3">${escapeHtml(lead.notes || "")}</textarea></label><div class="inline"><button class="button ghost small" type="submit">Save lead</button><button class="button danger small" type="button" data-delete-lead="${escapeHtml(lead.id)}">Delete lead</button><span class="subtle">Last activity: ${escapeHtml(formatDate(lead.last_activity_at, "None"))}</span></div></form><form class="activity-form" data-activity-form><div class="activity-row"><label>Type<select name="activityType"><option value="note">Note</option><option value="call">Call</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="meeting">Meeting</option></select></label><label>Interaction note<input name="note" required maxlength="5000" placeholder="What happened? What is next?"></label><button class="button primary small" type="submit">Log</button></div></form><ul class="activity-history">${activityMarkup(lead, activities)}</ul></details>`;
+  return `<article class="lead-record"><details class="lead-card" data-lead-id="${escapeHtml(lead.id)}"><summary><div class="lead-title"><strong>${escapeHtml(lead.name)}</strong><span>${escapeHtml(summary)}</span></div><div class="lead-meta"><span class="status ${escapeHtml(lead.status)}">${escapeHtml(statusLabels[lead.status] || lead.status)}</span><span>${escapeHtml(followUp)}</span></div></summary><form class="lead-edit" data-lead-update><div class="form-row"><label>Name<input name="name" value="${escapeHtml(lead.name)}"></label><label>Phone<input name="phone" value="${escapeHtml(lead.phone || "")}"></label></div><div class="form-row"><label>Email<input name="email" type="email" value="${escapeHtml(lead.email || "")}"></label><label>Subject<input name="subject" value="${escapeHtml(lead.subject || "")}"></label></div><div class="form-row"><label>Status<select name="status">${optionList(statusLabels, lead.status)}</select></label><label>Source<select name="source">${leadSourceOptions(lead.source)}</select></label></div><div class="form-row"><label>Booking reference<input name="bookingReference" value="${escapeHtml(lead.booking_reference || "")}"></label><label>Quoted price (INR)<input name="quotedPrice" type="number" min="0" max="10000000" step="1" inputmode="numeric" value="${escapeHtml(lead.quoted_price ?? "")}"></label></div><label>Next follow-up<input name="nextFollowUpAt" type="datetime-local" value="${escapeHtml(toDateInput(lead.next_follow_up_at))}"></label><label>Lead notes<textarea name="notes" rows="3">${escapeHtml(lead.notes || "")}</textarea></label><div class="inline"><button class="button ghost small" type="submit">Save lead</button><span class="subtle">Last activity: ${escapeHtml(formatDate(lead.last_activity_at, "None"))}</span></div></form><form class="activity-form" data-activity-form><div class="activity-row"><label>Type<select name="activityType"><option value="note">Note</option><option value="call">Call</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="meeting">Meeting</option></select></label><label>Interaction note<input name="note" required maxlength="5000" placeholder="What happened? What is next?"></label><button class="button primary small" type="submit">Log</button></div></form><ul class="activity-history">${activityMarkup(lead, activities)}</ul></details>${deleteIconButton("lead", lead.id, lead.name)}</article>`;
 }
 function filteredLeads(leads) { const needle = state.leadSearch.trim().toLowerCase(); return leads.filter((lead) => (!state.leadStatus || lead.status === state.leadStatus) && (!needle || [lead.name, lead.phone, lead.email, lead.subject, lead.booking_reference, lead.source].filter(Boolean).join(" ").toLowerCase().includes(needle))); }
 function bookingByReference(reference) { return state.dashboard?.bookings.find((booking) => booking.id === reference); }
@@ -56,14 +57,73 @@ function selectBookingForAllocation(reference) {
   renderAllocationOptions(); elements.allocationBooking.value = booking.id;
 }
 
+function bookingOperationsValues(booking) {
+  const saved = booking.operations || {};
+  return {
+    bookingStatus: booking.status || "new",
+    fullAddress: saved.fullAddress || "",
+    email: saved.email || "",
+    tentNumber: saved.tentNumber || "",
+    ratePerNight: saved.ratePerNight ?? (booking.nights ? Math.round(Number(booking.base_amount || 0) / Number(booking.nights)) : ""),
+    stayAmount: saved.stayAmount ?? booking.base_amount ?? "",
+    pickupRequired: Boolean(saved.pickupRequired),
+    pickupPoint: saved.pickupPoint || "",
+    pickupDate: dateOnly(saved.pickupDate),
+    pickupTime: String(saved.pickupTime || "").slice(0, 5),
+    dropRequired: Boolean(saved.dropRequired),
+    dropPoint: saved.dropPoint || "",
+    dropDate: dateOnly(saved.dropDate),
+    dropTime: String(saved.dropTime || "").slice(0, 5),
+    transportAmount: saved.transportAmount || 0,
+    mealPreference: saved.mealPreference || "",
+    lunchQtyPerDay: saved.lunchQtyPerDay || 0,
+    dinnerQtyPerDay: saved.dinnerQtyPerDay || 0,
+    mealAmount: saved.mealAmount ?? booking.dinner_amount ?? 0,
+    advancePaid: saved.advancePaid || 0,
+    paymentStatus: saved.paymentStatus || "unpaid",
+    bookingSource: saved.bookingSource || booking.source || "",
+    idProofStatus: saved.idProofStatus || "pending",
+    specialRequests: saved.specialRequests || "",
+    assignedStaff: saved.assignedStaff || "",
+    internalNotes: saved.internalNotes || ""
+  };
+}
+
+function selectBookingForOperations(reference) {
+  const booking = bookingByReference(reference);
+  state.bookingOperationsId = booking?.id || "";
+  elements.bookingOperationsFields.disabled = !booking;
+  if (!booking) {
+    elements.bookingOperationsSummary.textContent = "Choose a booking to prepare its operations record.";
+    return;
+  }
+  const values = bookingOperationsValues(booking);
+  for (const [name, value] of Object.entries(values)) {
+    const field = elements.bookingOperationsForm.elements[name];
+    if (!field) continue;
+    if (field.type === "checkbox") field.checked = Boolean(value);
+    else field.value = value ?? "";
+  }
+  const total = Number(values.stayAmount || 0) + Number(values.mealAmount || 0) + Number(values.transportAmount || 0);
+  const balance = Math.max(0, total - Number(values.advancePaid || 0));
+  const departure = addDays(booking.arrival_date, booking.nights);
+  elements.bookingOperationsSummary.innerHTML = `<strong>${escapeHtml(booking.id)} · ${escapeHtml(booking.name)}</strong><br>${escapeHtml(formatStayDate(booking.arrival_date))} → ${escapeHtml(formatStayDate(departure))} · ${escapeHtml(booking.guests)} guest${Number(booking.guests) === 1 ? "" : "s"} · ${escapeHtml(booking.nights)} night${Number(booking.nights) === 1 ? "" : "s"}<br>Stay ${inr(values.stayAmount)} · Meals ${inr(values.mealAmount)} · Transport ${inr(values.transportAmount)} · Operations total ${inr(total)} · Balance ${inr(balance)}`;
+}
+
+function renderBookingOperations() {
+  const selected = state.bookingOperationsId || elements.bookingOperationsBooking.value;
+  elements.bookingOperationsBooking.innerHTML = `<option value="">Choose a booking</option>${state.dashboard.bookings.map((booking) => `<option value="${escapeHtml(booking.id)}" ${booking.id === selected ? "selected" : ""}>${escapeHtml(booking.id)} · ${escapeHtml(booking.name)} · ${escapeHtml(booking.plan)}</option>`).join("")}`;
+  selectBookingForOperations(elements.bookingOperationsBooking.value);
+}
+
 function renderDashboard(dashboard) {
   const { summary, bookings, enquiries, contestEntries, luckyEntries, leads, activities, tentUnits, tentAllocations, archivedLeads = [], archivedBookings = [] } = dashboard;
   document.querySelector("#metricBookings").textContent = summary.total_bookings; document.querySelector("#metricEnquiries").textContent = summary.new_enquiries; document.querySelector("#metricLeads").textContent = summary.open_leads; document.querySelector("#metricFollowUps").textContent = summary.follow_ups_due; document.querySelector("#metricAllocations").textContent = `${summary.active_allocations || 0} / ${summary.total_tents || 0}`;
   const visibleLeads = filteredLeads(leads);
   document.querySelector("#leadCount").textContent = `${visibleLeads.length} of ${leads.length} leads`; document.querySelector("#bookingCount").textContent = `${bookings.length} records`; document.querySelector("#enquiryCount").textContent = `${enquiries.length} records`; document.querySelector("#contestCount").textContent = contestEntries.length; document.querySelector("#luckyCount").textContent = luckyEntries.length; document.querySelector("#archiveCount").textContent = archivedLeads.length + archivedBookings.length;
   elements.leadList.innerHTML = visibleLeads.length ? visibleLeads.map((lead) => renderLead(lead, activities)).join("") : "<p class=\"empty-state\">No leads match this view.</p>";
-  elements.bookingRows.innerHTML = bookings.length ? bookings.map((booking) => { const allocations = activeAllocationsFor(booking.id); return `<tr><td><div class="person"><strong>${escapeHtml(booking.name)}</strong><span class="subtle">${escapeHtml(booking.phone)}</span></div></td><td>${escapeHtml(booking.plan)}<br><span class="subtle">${escapeHtml(booking.tent_type || "Tent type pending")}</span></td><td>${escapeHtml(formatStayDate(booking.arrival_date))}<br><span class="subtle">${booking.guests} guests · ${booking.nights} nights</span></td><td>${inr(booking.total_amount)}</td><td>${booking.invoice_stored ? `<a class="invoice-link" target="_blank" rel="noopener" href="/${escapeHtml(booking.invoice_path)}">Open PDF</a>` : "<span class=\"invoice-missing\">Not stored</span>"}</td><td><span class="allocation-summary">${escapeHtml(allocations.length ? allocations.map((allocation) => allocation.tent_code).join(", ") : "Not allotted")}</span><button class="button ghost small" type="button" data-allot-booking="${escapeHtml(booking.id)}">${allocations.length ? "Add another" : "Allot tent"}</button></td><td>${escapeHtml(formatDate(booking.created_at))}</td><td><button class="button danger small" type="button" data-delete-booking="${escapeHtml(booking.id)}">Delete</button></td></tr>`; }).join("") : "<tr><td colspan=\"8\" class=\"empty-state\">No bookings yet.</td></tr>";
-  elements.enquiryList.innerHTML = enquiries.length ? enquiries.map((entry) => `<article class="enquiry-card"><div class="enquiry-top"><div><h3>${escapeHtml(entry.name)} <span class="subtle">· ${escapeHtml(entry.subject || "General enquiry")}</span></h3><small>${escapeHtml([entry.phone, entry.email].filter(Boolean).join(" · "))} · ${escapeHtml(formatDate(entry.created_at))}</small></div><button class="button ghost small" type="button" data-convert-enquiry="${escapeHtml(entry.id)}">Add to CRM</button></div><p>${escapeHtml(entry.message)}</p></article>`).join("") : "<p class=\"empty-state\">No enquiries yet.</p>";
+  elements.bookingRows.innerHTML = bookings.length ? bookings.map((booking) => { const allocations = activeAllocationsFor(booking.id); return `<tr><td><div class="person"><strong>${escapeHtml(booking.name)}</strong><span class="subtle">${escapeHtml(booking.phone)}</span></div></td><td>${escapeHtml(booking.plan)}<br><span class="subtle">${escapeHtml(booking.tent_type || "Tent type pending")}</span></td><td>${escapeHtml(formatStayDate(booking.arrival_date))}<br><span class="subtle">${booking.guests} guests · ${booking.nights} nights</span></td><td>${inr(booking.total_amount)}</td><td>${booking.invoice_stored ? `<a class="invoice-link" target="_blank" rel="noopener" href="/${escapeHtml(booking.invoice_path)}">Open PDF</a>` : "<span class=\"invoice-missing\">Not stored</span>"}</td><td><span class="allocation-summary">${escapeHtml(allocations.length ? allocations.map((allocation) => allocation.tent_code).join(", ") : "Not allotted")}</span><button class="button ghost small" type="button" data-allot-booking="${escapeHtml(booking.id)}">${allocations.length ? "Add another" : "Allot tent"}</button></td><td>${escapeHtml(formatDate(booking.created_at))}</td><td>${deleteIconButton("booking", booking.id, booking.name)}</td></tr>`; }).join("") : "<tr><td colspan=\"8\" class=\"empty-state\">No bookings yet.</td></tr>";
+  elements.enquiryList.innerHTML = enquiries.length ? enquiries.map((entry) => `<article class="enquiry-card"><div class="enquiry-top"><div><h3>${escapeHtml(entry.name)} <span class="subtle">· ${escapeHtml(entry.subject || "General enquiry")}</span></h3><small>${escapeHtml([entry.phone, entry.email].filter(Boolean).join(" · "))} · ${escapeHtml(formatDate(entry.created_at))}</small></div>${entry.status === "converted" ? "<span class=\"status contacted\">In CRM</span>" : `<button class="button ghost small" type="button" data-convert-enquiry="${escapeHtml(entry.id)}">Add to CRM</button>`}</div><p>${escapeHtml(entry.message)}</p></article>`).join("") : "<p class=\"empty-state\">No enquiries yet.</p>";
   elements.contestList.innerHTML = contestEntries.length ? contestEntries.map((entry) => `<article class="mini-card"><h3>${escapeHtml(entry.email)}</h3><small>${escapeHtml(entry.phone)} · ${escapeHtml(formatDate(entry.created_at))}</small><p><a href="${escapeHtml(entry.instagram_url)}" target="_blank" rel="noopener">Open Instagram entry</a></p></article>`).join("") : "<p class=\"empty-state\">No contest entries yet.</p>";
   elements.luckyList.innerHTML = luckyEntries.length ? luckyEntries.map((entry) => `<article class="mini-card"><h3>${escapeHtml(entry.booking_reference)}</h3><small>${escapeHtml(entry.email)} · ${escapeHtml(entry.phone)}</small><p>${escapeHtml(formatDate(entry.created_at))}</p></article>`).join("") : "<p class=\"empty-state\">No lucky-stay entries yet.</p>";
   const archivedRecords = [
@@ -71,7 +131,7 @@ function renderDashboard(dashboard) {
     ...archivedBookings.map((booking) => `<article class="archive-card"><div><span class="tent-code">Booking</span><h3>${escapeHtml(booking.name)}</h3><p>${escapeHtml(booking.id)} · ${escapeHtml(booking.plan)} · Deleted ${escapeHtml(formatDate(booking.deleted_at))}</p></div><button class="button ghost small" type="button" data-restore-booking="${escapeHtml(booking.id)}">Restore</button></article>`)
   ];
   elements.archiveList.innerHTML = archivedRecords.length ? archivedRecords.join("") : "<p class=\"empty-state\">No deleted records. Deleted leads and bookings can be restored here.</p>";
-  renderTentInventory(tentUnits); renderAllocationOptions(); renderAllocations(tentAllocations);
+  renderBookingOperations(); renderTentInventory(tentUnits); renderAllocationOptions(); renderAllocations(tentAllocations);
 }
 
 async function refreshDashboard() { if (state.loading) return; state.loading = true; elements.refresh.disabled = true; elements.connection.textContent = "Refreshing secure records…"; elements.connection.className = "connection-status"; try { state.dashboard = await api("/api/admin/dashboard"); renderDashboard(state.dashboard); elements.connection.textContent = `Updated ${new Intl.DateTimeFormat("en-IN", { timeStyle: "medium" }).format(new Date())}`; elements.connection.className = "connection-status ready"; } catch (error) { elements.connection.textContent = "Records unavailable"; elements.connection.className = "connection-status error"; showToast(error.message, true); } finally { state.loading = false; elements.refresh.disabled = false; } }
@@ -84,6 +144,8 @@ elements.allocationForm.addEventListener("submit", (event) => submitForm(event, 
 elements.leadSearch.addEventListener("input", (event) => { state.leadSearch = event.target.value; if (state.dashboard) renderDashboard(state.dashboard); });
 elements.leadStatusFilter.addEventListener("change", (event) => { state.leadStatus = event.target.value; if (state.dashboard) renderDashboard(state.dashboard); });
 elements.allocationBooking.addEventListener("change", (event) => selectBookingForAllocation(event.target.value));
+elements.bookingOperationsBooking.addEventListener("change", (event) => selectBookingForOperations(event.target.value));
+elements.bookingOperationsForm.addEventListener("submit", async (event) => { event.preventDefault(); const bookingId = elements.bookingOperationsBooking.value; if (!bookingId) return; const button = event.submitter; button.disabled = true; try { await api(`/api/admin/bookings/${encodeURIComponent(bookingId)}/operations`, { method: "PATCH", body: JSON.stringify(formObject(event.currentTarget)) }); showToast("Booking operations saved."); await refreshDashboard(); } catch (error) { showToast(error.message, true); } finally { button.disabled = false; } });
 
 document.addEventListener("submit", async (event) => {
   const leadUpdate = event.target.closest("[data-lead-update]"), activityForm = event.target.closest("[data-activity-form]"), tentUpdate = event.target.closest("[data-tent-update]"), allocationUpdate = event.target.closest("[data-allocation-update]");
@@ -98,8 +160,9 @@ document.addEventListener("submit", async (event) => {
   } catch (error) { showToast(error.message, true); } finally { button.disabled = false; }
 });
 document.addEventListener("click", async (event) => {
-  const convertButton = event.target.closest("[data-convert-enquiry]"), allotButton = event.target.closest("[data-allot-booking]"), deleteLeadButton = event.target.closest("[data-delete-lead]"), deleteBookingButton = event.target.closest("[data-delete-booking]"), restoreLeadButton = event.target.closest("[data-restore-lead]"), restoreBookingButton = event.target.closest("[data-restore-booking]"), permanentDeleteLeadButton = event.target.closest("[data-permanent-delete-lead]");
+  const convertButton = event.target.closest("[data-convert-enquiry]"), allotButton = event.target.closest("[data-allot-booking]"), manageBookingButton = event.target.closest("[data-manage-booking]"), deleteLeadButton = event.target.closest("[data-delete-lead]"), deleteBookingButton = event.target.closest("[data-delete-booking]"), restoreLeadButton = event.target.closest("[data-restore-lead]"), restoreBookingButton = event.target.closest("[data-restore-booking]"), permanentDeleteLeadButton = event.target.closest("[data-permanent-delete-lead]");
   if (allotButton) { selectBookingForAllocation(allotButton.dataset.allotBooking); document.querySelector("#allocationPanel").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+  if (manageBookingButton) { elements.bookingOperationsBooking.value = manageBookingButton.dataset.manageBooking; selectBookingForOperations(manageBookingButton.dataset.manageBooking); document.querySelector("#bookingOperationsPanel").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
   const isDelete = Boolean(deleteLeadButton || deleteBookingButton);
   const actionButton = convertButton || deleteLeadButton || deleteBookingButton || restoreLeadButton || restoreBookingButton || permanentDeleteLeadButton;
   if (!actionButton) return;

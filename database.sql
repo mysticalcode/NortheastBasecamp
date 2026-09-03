@@ -32,6 +32,38 @@ CREATE TABLE IF NOT EXISTS enquiries (
   source VARCHAR(64) NOT NULL DEFAULT 'website'
 );
 
+CREATE TABLE IF NOT EXISTS booking_operations (
+  booking_reference VARCHAR(40) PRIMARY KEY,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  full_address TEXT NULL,
+  email VARCHAR(255) NULL,
+  tent_number VARCHAR(64) NULL,
+  rate_per_night INT NULL,
+  stay_amount INT NULL,
+  pickup_required TINYINT(1) NOT NULL DEFAULT 0,
+  pickup_point VARCHAR(255) NULL,
+  pickup_date DATE NULL,
+  pickup_time VARCHAR(5) NULL,
+  drop_required TINYINT(1) NOT NULL DEFAULT 0,
+  drop_point VARCHAR(255) NULL,
+  drop_date DATE NULL,
+  drop_time VARCHAR(5) NULL,
+  transport_amount INT NOT NULL DEFAULT 0,
+  meal_preference VARCHAR(64) NULL,
+  lunch_qty_per_day INT NOT NULL DEFAULT 0,
+  dinner_qty_per_day INT NOT NULL DEFAULT 0,
+  meal_amount INT NOT NULL DEFAULT 0,
+  advance_paid INT NOT NULL DEFAULT 0,
+  payment_status VARCHAR(32) NOT NULL DEFAULT 'unpaid',
+  booking_source VARCHAR(128) NULL,
+  id_proof_status VARCHAR(32) NOT NULL DEFAULT 'pending',
+  special_requests TEXT NULL,
+  assigned_staff VARCHAR(255) NULL,
+  internal_notes TEXT NULL,
+  INDEX booking_operations_payment_status (payment_status),
+  INDEX booking_operations_staff (assigned_staff)
+);
+
 CREATE TABLE IF NOT EXISTS contest_entries (
   id VARCHAR(40) PRIMARY KEY,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
