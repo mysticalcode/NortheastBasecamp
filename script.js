@@ -34,7 +34,7 @@ function applyCreatorReferral() {
 
   referralInput.value = code;
   referralNotice.hidden = false;
-  referralNotice.textContent = `Creator booking link applied — ${code}. This booking will be credited to your creator.`;
+  referralNotice.textContent = `Creator link active · ${code} — your booking will be attributed automatically.`;
 }
 
 function showInvoice(invoiceUrl, reference) {
