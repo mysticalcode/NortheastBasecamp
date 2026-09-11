@@ -17,7 +17,9 @@ CREATE TABLE IF NOT EXISTS bookings (
   invoice_data LONGBLOB NULL,
   invoice_content_type VARCHAR(64) NULL,
   deleted_at DATETIME NULL,
-  source VARCHAR(64) NOT NULL DEFAULT 'website'
+  source VARCHAR(64) NOT NULL DEFAULT 'website',
+  referral_code VARCHAR(64) NULL,
+  INDEX bookings_referral_code (referral_code)
 );
 
 CREATE TABLE IF NOT EXISTS enquiries (

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Northeast Basecamp | Creator booking links</title>
+    <link rel="icon" type="image/png" href="/assets/nbc-logo.png">
+    <style>
+      :root { color-scheme: light; --forest:#034c3d; --ink:#102d26; --cream:#fffdf7; --sand:#f5eedf; --gold:#f2ad52; }
+      * { box-sizing:border-box; } body { background:linear-gradient(145deg,#e7f0e6,#f8efde 55%,#dceee9); color:var(--ink); font-family:Arial,sans-serif; margin:0; min-height:100vh; }
+      main { margin:0 auto; max-width:1120px; padding:46px 24px 64px; } .brand { align-items:center; display:flex; gap:14px; } .brand img { background:#fff; border-radius:50%; height:54px; padding:4px; width:54px; } .brand strong { font-size:1.05rem; letter-spacing:.02em; }
+      h1 { color:var(--forest); font-family:Georgia,serif; font-size:clamp(2rem,5vw,3.8rem); letter-spacing:-.05em; line-height:1; margin:54px 0 10px; max-width:680px; } .intro { font-size:1.05rem; line-height:1.55; max-width:650px; }
+      .grid { display:grid; gap:18px; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); margin-top:36px; } article { background:rgba(255,253,247,.92); border:1px solid rgba(3,76,61,.15); border-radius:20px; box-shadow:0 14px 34px rgba(14,59,48,.11); display:grid; gap:16px; grid-template-columns:1fr 126px; padding:21px; } h2 { color:var(--forest); font-size:1.15rem; margin:0 0 5px; } .code { color:#9e5e14; font-size:.8rem; font-weight:800; letter-spacing:.09em; margin:0; } .link { color:var(--forest); display:block; font-size:.78rem; line-height:1.35; margin:15px 0; overflow-wrap:anywhere; text-decoration:none; } button { background:var(--forest); border:0; border-radius:999px; color:white; cursor:pointer; font-weight:700; padding:10px 14px; } .qr { align-self:center; background:#fffdf7; border:1px solid #d5d6c9; border-radius:12px; height:126px; padding:7px; width:126px; } .footer { color:#49655d; font-size:.85rem; margin-top:30px; }
+      @media (max-width:480px) { main { padding:28px 16px 40px; } h1 { margin-top:38px; } article { grid-template-columns:1fr 105px; } .qr { height:105px; width:105px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand"><img src="/assets/nbc-logo.png" alt="Northeast Basecamp"><strong>Northeast Basecamp</strong></div>
+      <h1>Creator booking links</h1>
+      <p class="intro">Share one link or its QR code with each creator. A guest who starts their booking through it is recorded against that creator code in the booking CRM.</p>
+      <section class="grid" aria-label="Creator booking links">
+        <article><div><h2>Creator 01</h2><p class="code">NBC-CREATOR-01</p><a class="link" href="https://northeastbasecamp.com/?ref=NBC-CREATOR-01#book">https://northeastbasecamp.com/?ref=NBC-CREATOR-01#book</a><button type="button" data-link="https://northeastbasecamp.com/?ref=NBC-CREATOR-01#book">Copy link</button></div><a href="https://northeastbasecamp.com/?ref=NBC-CREATOR-01#book"><img class="qr" src="/assets/creator-qr/nbc-creator-01.png" alt="QR code for Creator 01 booking link"></a></article>
+        <article><div><h2>Creator 02</h2><p class="code">NBC-CREATOR-02</p><a class="link" href="https://northeastbasecamp.com/?ref=NBC-CREATOR-02#book">https://northeastbasecamp.com/?ref=NBC-CREATOR-02#book</a><button type="button" data-link="https://northeastbasecamp.com/?ref=NBC-CREATOR-02#book">Copy link</button></div><a href="https://northeastbasecamp.com/?ref=NBC-CREATOR-02#book"><img class="qr" src="/assets/creator-qr/nbc-creator-02.png" alt="QR code for Creator 02 booking link"></a></article>
+        <article><div><h2>Creator 03</h2><p class="code">NBC-CREATOR-03</p><a class="link" href="https://northeastbasecamp.com/?ref=NBC-CREATOR-03#book">https://northeastbasecamp.com/?ref=NBC-CREATOR-03#book</a><button type="button" data-link="https://northeastbasecamp.com/?ref=NBC-CREATOR-03#book">Copy link</button></div><a href="https://northeastbasecamp.com/?ref=NBC-CREATOR-03#book"><img class="qr" src="/assets/creator-qr/nbc-creator-03.png" alt="QR code for Creator 03 booking link"></a></article>
+        <article><div><h2>Creator 04</h2><p class="code">NBC-CREATOR-04</p><a class="link" href="https://northeastbasecamp.com/?ref=NBC-CREATOR-04#book">https://northeastbasecamp.com/?ref=NBC-CREATOR-04#book</a><button type="button" data-link="https://northeastbasecamp.com/?ref=NBC-CREATOR-04#book">Copy link</button></div><a href="https://northeastbasecamp.com/?ref=NBC-CREATOR-04#book"><img class="qr" src="/assets/creator-qr/nbc-creator-04.png" alt="QR code for Creator 04 booking link"></a></article>
+        <article><div><h2>Creator 05</h2><p class="code">NBC-CREATOR-05</p><a class="link" href="https://northeastbasecamp.com/?ref=NBC-CREATOR-05#book">https://northeastbasecamp.com/?ref=NBC-CREATOR-05#book</a><button type="button" data-link="https://northeastbasecamp.com/?ref=NBC-CREATOR-05#book">Copy link</button></div><a href="https://northeastbasecamp.com/?ref=NBC-CREATOR-05#book"><img class="qr" src="/assets/creator-qr/nbc-creator-05.png" alt="QR code for Creator 05 booking link"></a></article>
+      </section>
+      <p class="footer">Keep this page for the team and send each creator only their own link or QR code.</p>
+    </main>
+    <script>
+      document.querySelectorAll("[data-link]").forEach((button) => button.addEventListener("click", async () => { await navigator.clipboard.writeText(button.dataset.link); button.textContent = "Copied"; setTimeout(() => { button.textContent = "Copy link"; }, 1800); }));
+    </script>
+  </body>
+</html>

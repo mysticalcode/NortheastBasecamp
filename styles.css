@@ -814,6 +814,19 @@ p {
   padding: 24px;
 }
 
+.creator-referral {
+  align-items: center;
+  background: rgba(255, 184, 77, 0.16);
+  border: 1px solid rgba(255, 184, 77, 0.55);
+  border-radius: 8px;
+  color: var(--cream);
+  display: flex;
+  font-size: 0.9rem;
+  font-weight: 800;
+  margin: 0;
+  padding: 11px 13px;
+}
+
 .timeline {
   counter-reset: day;
   display: grid;

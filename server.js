@@ -19,6 +19,13 @@ const luckyEntriesFile = join(__dirname, "data", "lucky-entries.json");
 const invoicesDirectory = join(__dirname, "data", "invoices");
 const ziroFestival = "Ziro Music Festival 2026";
 const dinnerRatePerGuestNight = 400;
+const creatorReferralCodes = new Set([
+  "NBC-CREATOR-01",
+  "NBC-CREATOR-02",
+  "NBC-CREATOR-03",
+  "NBC-CREATOR-04",
+  "NBC-CREATOR-05"
+]);
 const planDetails = {
   "Dome Tent - 2 Sharing": { rate: 2200, rateType: "night", tentType: "Dome Tent", sharing: 2 },
   "Dome Tent - 3 Sharing": { rate: 2000, rateType: "night", tentType: "Dome Tent", sharing: 3 },
@@ -146,7 +153,9 @@ async function initializeDatabase(pool) {
       invoice_data LONGBLOB NULL,
       invoice_content_type VARCHAR(64) NULL,
       deleted_at DATETIME NULL,
-      source VARCHAR(64) NOT NULL DEFAULT 'website'
+      source VARCHAR(64) NOT NULL DEFAULT 'website',
+      referral_code VARCHAR(64) NULL,
+      INDEX bookings_referral_code (referral_code)
     )
   `);
 
@@ -166,12 +175,17 @@ async function initializeDatabase(pool) {
     ["invoice_path", "VARCHAR(255) NULL"],
     ["invoice_data", "LONGBLOB NULL"],
     ["invoice_content_type", "VARCHAR(64) NULL"],
-    ["deleted_at", "DATETIME NULL"]
+    ["deleted_at", "DATETIME NULL"],
+    ["referral_code", "VARCHAR(64) NULL"]
   ];
   for (const [name, definition] of requiredBookingColumns) {
     if (!bookingColumnNames.has(name)) {
       await pool.query(`ALTER TABLE bookings ADD COLUMN ${name} ${definition}`);
     }
+  }
+  const [bookingIndexes] = await pool.query("SHOW INDEX FROM bookings WHERE Key_name = 'bookings_referral_code'");
+  if (bookingIndexes.length === 0) {
+    await pool.query("ALTER TABLE bookings ADD INDEX bookings_referral_code (referral_code)");
   }
 
   await pool.query(`
@@ -515,6 +529,7 @@ async function readJsonBody(req) {
 function cleanBooking(input) {
   const plan = String(input.plan || "").trim();
   const planDetail = planDetails[plan];
+  const referralCode = String(input.referralCode || "").trim().toUpperCase();
   const booking = {
     festival: ziroFestival,
     plan,
@@ -523,7 +538,8 @@ function cleanBooking(input) {
     guests: Number(input.guests || 0),
     dinnerIncluded: input.dinnerIncluded === true || input.dinnerIncluded === "true",
     name: String(input.name || "").trim(),
-    phone: String(input.phone || "").trim()
+    phone: String(input.phone || "").trim(),
+    referralCode
   };
 
   if (!booking.plan || !booking.arrivalDate || !booking.name || !booking.phone) {
@@ -532,6 +548,10 @@ function cleanBooking(input) {
 
   if (!planDetail) {
     throw new Error("Please select a valid stay option");
+  }
+
+  if (booking.referralCode && !creatorReferralCodes.has(booking.referralCode)) {
+    throw new Error("This creator booking link is not valid. Please use the link shared by your creator.");
   }
 
   if (!/^2026-09-(2[4-7])$/.test(booking.arrivalDate)) {
@@ -945,8 +965,8 @@ async function saveBooking(booking) {
     try {
       await pool.execute(
         `INSERT INTO bookings
-          (id, created_at, status, festival, plan, arrival_date, nights, guests, dinner_included, base_amount, dinner_amount, total_amount, name, phone, invoice_path, invoice_data, invoice_content_type, source)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          (id, created_at, status, festival, plan, arrival_date, nights, guests, dinner_included, base_amount, dinner_amount, total_amount, name, phone, invoice_path, invoice_data, invoice_content_type, source, referral_code)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           record.id,
           record.createdAt.slice(0, 19).replace("T", " "),
@@ -965,7 +985,8 @@ async function saveBooking(booking) {
           record.invoicePath,
           invoiceData,
           "application/pdf",
-          "website"
+          record.referralCode ? "creator-referral" : "website",
+          record.referralCode || null
         ]
       );
       return record;
@@ -1127,7 +1148,7 @@ async function getAdminDashboard() {
         (SELECT COUNT(*) FROM tent_allocations WHERE allocation_status IN ('reserved', 'checked-in')) AS active_allocations
     `),
     pool.query(`
-      SELECT b.id, b.created_at, b.status, b.source, b.festival, b.plan, b.arrival_date, b.nights, b.guests, b.dinner_included,
+      SELECT b.id, b.created_at, b.status, b.source, b.referral_code, b.festival, b.plan, b.arrival_date, b.nights, b.guests, b.dinner_included,
              b.base_amount, b.dinner_amount, b.total_amount, b.name, b.phone, b.invoice_path,
              CASE WHEN b.invoice_data IS NULL OR OCTET_LENGTH(b.invoice_data) = 0 THEN 0 ELSE 1 END AS invoice_stored,
              o.full_address, o.email AS operations_email, o.tent_number, o.rate_per_night, o.stay_amount,
@@ -1216,6 +1237,7 @@ async function getAdminDashboard() {
       created_at: booking.created_at,
       status: booking.status,
       source: booking.source || "",
+      referral_code: booking.referral_code || "",
       festival: booking.festival,
       plan: booking.plan,
       arrival_date: booking.arrival_date,

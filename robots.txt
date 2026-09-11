@@ -3,6 +3,7 @@ Allow: /
 Disallow: /admin
 Disallow: /admin.html
 Disallow: /api/admin/
+Disallow: /creator-links.html
 
 Sitemap: https://northeastbasecamp.com/sitemap.xml
 

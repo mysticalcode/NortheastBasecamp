@@ -11,6 +11,7 @@ const invoiceDownload = document.querySelector("#invoiceDownload");
 const invoiceDialogTitle = document.querySelector("#invoiceDialogTitle");
 const invoiceDialogReference = document.querySelector("#invoiceDialogReference");
 const dinnerRatePerGuestNight = 400;
+const creatorReferralCodes = new Set(["NBC-CREATOR-01", "NBC-CREATOR-02", "NBC-CREATOR-03", "NBC-CREATOR-04", "NBC-CREATOR-05"]);
 
 function formatInr(amount) {
   return `INR ${new Intl.NumberFormat("en-IN").format(amount)}`;
@@ -21,6 +22,19 @@ function setMenuOpen(isOpen) {
   menuToggle.setAttribute("aria-expanded", String(isOpen));
   menuToggle.setAttribute("aria-label", isOpen ? "Close navigation menu" : "Open navigation menu");
   header.classList.toggle("is-menu-open", isOpen);
+}
+
+function applyCreatorReferral() {
+  const referralInput = document.querySelector("#referralCode");
+  const referralNotice = document.querySelector("#creatorReferral");
+  if (!referralInput || !referralNotice) return;
+
+  const code = new URLSearchParams(window.location.search).get("ref")?.trim().toUpperCase() || "";
+  if (!creatorReferralCodes.has(code)) return;
+
+  referralInput.value = code;
+  referralNotice.hidden = false;
+  referralNotice.textContent = `Creator referral applied: ${code}. Your booking will be credited to this creator.`;
 }
 
 function showInvoice(invoiceUrl, reference) {
@@ -154,7 +168,8 @@ if (bookingForm) {
     guests: Number(data.get("guests")),
     dinnerIncluded: data.get("dinnerIncluded") === "true",
     name: data.get("name"),
-    phone: data.get("phone")
+    phone: data.get("phone"),
+    referralCode: data.get("referralCode")
   };
 
   submitButton.disabled = true;
@@ -257,6 +272,7 @@ setupCampaignForm("#luckyEntryForm", "/api/lucky-entries", "#luckyEntryNote", "Y
 updateHeader();
 updateParallax();
 if (bookingForm) updateSummary();
+applyCreatorReferral();
 
 if (window.lucide) {
   window.lucide.createIcons({ attrs: { "stroke-width": 1.8 } });

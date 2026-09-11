@@ -772,6 +772,8 @@
           <p>Choose a stay, add your travel details and send a secure booking request. We will confirm availability before any payment is requested.</p>
         </div>
         <form class="booking-form reveal" id="bookingForm">
+          <input type="hidden" name="referralCode" id="referralCode" value="">
+          <p class="creator-referral" id="creatorReferral" hidden aria-live="polite"></p>
           <label>
             Stay option
             <select name="plan" id="plan" required>
