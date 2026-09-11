@@ -816,15 +816,18 @@ p {
 
 .creator-referral {
   align-items: center;
-  background: rgba(255, 184, 77, 0.16);
-  border: 1px solid rgba(255, 184, 77, 0.55);
-  border-radius: 8px;
-  color: var(--cream);
+  background: linear-gradient(110deg, #034c3d, #08745d);
+  border: 1px solid #f2ad52;
+  border-left: 6px solid #f2ad52;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(3, 76, 61, 0.16);
+  color: #fffdf7;
   display: flex;
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 800;
+  line-height: 1.45;
   margin: 0;
-  padding: 11px 13px;
+  padding: 14px 16px;
 }
 
 .timeline {

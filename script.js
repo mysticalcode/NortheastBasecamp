@@ -34,7 +34,7 @@ function applyCreatorReferral() {
 
   referralInput.value = code;
   referralNotice.hidden = false;
-  referralNotice.textContent = `Creator referral applied: ${code}. Your booking will be credited to this creator.`;
+  referralNotice.textContent = `Creator booking link applied — ${code}. This booking will be credited to your creator.`;
 }
 
 function showInvoice(invoiceUrl, reference) {
