@@ -816,7 +816,7 @@ p {
 
 .creator-referral {
   align-items: center;
-  background: linear-gradient(110deg, #034c3d, #08745d);
+  background: linear-gradient(110deg, #063f34 0%, #075c4d 100%);
   border: 1px solid #f2ad52;
   border-left: 6px solid #f2ad52;
   border-radius: 12px;
