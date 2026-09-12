@@ -1104,6 +1104,12 @@ td:nth-child(2) {
   width: 100%;
 }
 
+.experience-card img.synergy-poster {
+  aspect-ratio: 0.795;
+  background: #0b0b0b;
+  object-fit: contain;
+}
+
 .experience-card div {
   display: grid;
   gap: 8px;
