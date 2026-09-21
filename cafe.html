@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#06254a">
+    <meta name="theme-color" content="#064b37">
     <meta name="robots" content="noindex, nofollow">
     <title>Northeast Basecamp Café | Order food</title>
     <link rel="icon" type="image/png" href="/assets/nbc-logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/menu-order.css?v=20260921-1">
+    <link rel="stylesheet" href="/menu-order.css?v=20260921-2">
   </head>
   <body data-menu-kind="cafe">
     <main class="menu-shell">
@@ -18,9 +18,9 @@
       <section class="menu-hero"><p class="menu-kicker">Northeast Basecamp presents</p><h1>Hot Meals</h1><p>Quick café favourites for the campsite. Add items, review your final bill and send your order straight to our team on WhatsApp.</p></section>
       <div class="ordering-layout">
         <section><p class="menu-intro">Prices are current festival-market starting prices and may change with availability. Your WhatsApp order is confirmed by our team before preparation.</p><div id="menuCategories"></div></section>
-        <aside class="cart" aria-label="Your café cart"><h2>Your order</h2><p class="cart-note">Review items before sharing on WhatsApp.</p><div class="cart-items" id="cartItems"></div><div class="cart-total"><span>Final bill</span><span id="cartTotal">₹0</span></div><button class="whatsapp-order" id="shareOrder" type="button" disabled>Share café order on WhatsApp</button><button class="clear-cart" id="clearCart" type="button">Clear cart</button><p class="service-note">WhatsApp: +91 87199 62147. Please include your tent number or table in the message.</p></aside>
+        <aside class="cart" aria-label="Your café cart"><p class="cart-kicker">Northeast Basecamp Café</p><h2>Your order</h2><p class="cart-note">Your cart stays saved on this device. Add your details before sharing.</p><div class="cart-items" id="cartItems"></div><div class="cart-total"><span>Final bill</span><span id="cartTotal">₹0</span></div><div class="guest-details"><label for="guestName">Guest name <em>*</em></label><input id="guestName" name="guestName" autocomplete="name" required placeholder="Your full name"><label for="guestTent">Tent number / table <span>optional</span></label><input id="guestTent" name="guestTent" autocomplete="off" placeholder="For easier delivery"></div><p class="form-message" id="formMessage" role="status" aria-live="polite"></p><button class="whatsapp-order" id="shareOrder" type="button" disabled>Review &amp; share on WhatsApp</button><button class="clear-cart" id="clearCart" type="button">Clear cart</button><p class="service-note">WhatsApp: +91 87199 62147. Your order is confirmed only after our team replies.</p><details class="order-history"><summary>Saved order drafts <span id="orderHistoryCount">0</span></summary><div id="orderHistory"></div></details></aside>
       </div>
     </main>
-    <script src="/menu-order.js?v=20260921-1" defer></script>
+    <script src="/menu-order.js?v=20260921-2" defer></script>
   </body>
 </html>
