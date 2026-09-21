@@ -106,6 +106,51 @@ a {
   font-weight: 600;
 }
 
+.cafe-bar-menu {
+  position: relative;
+}
+
+.cafe-bar-menu summary {
+  cursor: pointer;
+  list-style: none;
+  white-space: nowrap;
+}
+
+.cafe-bar-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.cafe-bar-menu summary::after {
+  content: "⌄";
+  font-size: 12px;
+  margin-left: 5px;
+}
+
+.cafe-bar-menu-items {
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 14px 28px rgba(22, 18, 15, 0.14);
+  display: grid;
+  gap: 2px;
+  left: -12px;
+  min-width: 142px;
+  padding: 8px;
+  position: absolute;
+  top: 28px;
+  z-index: 12;
+}
+
+.cafe-bar-menu-items a {
+  border-radius: 7px;
+  padding: 9px 10px;
+}
+
+.cafe-bar-menu-items a:hover,
+.cafe-bar-menu-items a:focus-visible {
+  background: rgba(11, 122, 85, 0.1);
+}
+
 .nav-book,
 .button,
 .book-card {
@@ -2295,6 +2340,33 @@ textarea:focus {
   .desktop-nav a:hover,
   .desktop-nav a:focus-visible {
     background: rgba(11, 122, 85, 0.1);
+  }
+
+  .cafe-bar-menu {
+    width: 100%;
+  }
+
+  .cafe-bar-menu summary {
+    border-radius: 9px;
+    font-size: 15px;
+    padding: 13px 14px;
+  }
+
+  .cafe-bar-menu[open] summary {
+    background: rgba(11, 122, 85, 0.1);
+  }
+
+  .cafe-bar-menu-items {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    left: auto;
+    padding: 4px 14px 8px 28px;
+    position: static;
+  }
+
+  .cafe-bar-menu-items a {
+    padding: 10px;
   }
 
   .site-header.is-menu-open .desktop-nav {

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#1d0b21">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Northeast Basecamp Bar | Order drinks</title>
+    <link rel="icon" type="image/png" href="/assets/nbc-logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/menu-order.css?v=20260921-1">
+  </head>
+  <body class="bar-page" data-menu-kind="bar">
+    <main class="menu-shell">
+      <header class="menu-topbar"><a class="menu-brand" href="/"><img src="/assets/nbc-logo.png" alt="Northeast Basecamp"><span>Northeast Basecamp</span></a><a class="menu-home" href="/cafe-bar.html">Café &amp; Bar home</a></header>
+      <section class="menu-hero"><p class="menu-kicker">Northeast Basecamp presents</p><h1>Bar menu</h1><p>Build your order, see the final bill and share it directly with the bar team on WhatsApp. Please drink responsibly.</p></section>
+      <div class="ordering-layout">
+        <section><p class="menu-intro">Service is subject to age and ID verification, stock availability and local licensing rules. 60 ml pours are charged at twice the stated 30 ml rate.</p><div id="menuCategories"></div></section>
+        <aside class="cart" aria-label="Your bar cart"><h2>Your order</h2><p class="cart-note">Review items before sharing on WhatsApp.</p><div class="cart-items" id="cartItems"></div><div class="cart-total"><span>Final bill</span><span id="cartTotal">₹0</span></div><button class="whatsapp-order" id="shareOrder" type="button" disabled>Share bar order on WhatsApp</button><button class="clear-cart" id="clearCart" type="button">Clear cart</button><p class="service-note">WhatsApp: +91 87199 62147. Alcohol is served only to guests of legal drinking age after team confirmation.</p></aside>
+      </div>
+    </main>
+    <script src="/menu-order.js?v=20260921-1" defer></script>
+  </body>
+</html>
