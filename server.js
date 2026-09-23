@@ -17,6 +17,9 @@ const enquiriesFile = join(__dirname, "data", "enquiries.json");
 const contestEntriesFile = join(__dirname, "data", "contest-entries.json");
 const luckyEntriesFile = join(__dirname, "data", "lucky-entries.json");
 const invoicesDirectory = join(__dirname, "data", "invoices");
+const checkinsFile = join(__dirname, "data", "checkins.json");
+const checkinSheetWebhookUrl = process.env.GOOGLE_CHECKIN_SHEET_WEBHOOK_URL || "";
+const checkinSheetWebhookSecret = process.env.GOOGLE_CHECKIN_SHEET_WEBHOOK_SECRET || "";
 const ziroFestival = "Ziro Music Festival 2026";
 const dinnerRatePerGuestNight = 400;
 const creatorReferralCodes = new Set([
@@ -340,6 +343,28 @@ async function initializeDatabase(pool) {
       completed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS guest_checkins (
+      id VARCHAR(40) PRIMARY KEY,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      guest_name VARCHAR(255) NOT NULL,
+      phone VARCHAR(64) NOT NULL,
+      email VARCHAR(255) NULL,
+      booking_reference VARCHAR(40) NULL,
+      tent_number VARCHAR(64) NULL,
+      id_type VARCHAR(64) NULL,
+      id_number VARCHAR(255) NULL,
+      check_in_at DATETIME NULL,
+      check_out_at DATETIME NULL,
+      status VARCHAR(32) NOT NULL DEFAULT 'checked-in',
+      notes TEXT NULL,
+      INDEX guest_checkins_booking_reference (booking_reference),
+      INDEX guest_checkins_phone (phone),
+      INDEX guest_checkins_status (status)
+    )
+  `);
 }
 
 function positiveInteger(value, fallback = 1) {
@@ -617,6 +642,99 @@ function cleanPhone(value) {
     throw new Error("Please enter a valid phone number");
   }
   return phone;
+}
+
+function cleanCheckin(input) {
+  const action = String(input.action || "checkin").trim().toLowerCase();
+  const record = {
+    action,
+    guestName: String(input.guestName || "").trim(),
+    phone: String(input.phone || "").trim(),
+    email: String(input.email || "").trim().toLowerCase(),
+    bookingReference: String(input.bookingReference || "").trim().toUpperCase(),
+    tentNumber: String(input.tentNumber || "").trim(),
+    idType: String(input.idType || "").trim(),
+    idNumber: String(input.idNumber || "").trim(),
+    notes: String(input.notes || "").trim()
+  };
+
+  if (!["checkin", "checkout"].includes(action)) throw new Error("Please select check-in or check-out");
+  if (!record.guestName || !record.phone) throw new Error("Guest name and mobile number are required");
+  cleanPhone(record.phone);
+  if (record.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(record.email)) throw new Error("Please enter a valid email address");
+  if (record.bookingReference && !/^NBC-[A-Z0-9]+-[A-Z0-9]+$/.test(record.bookingReference)) throw new Error("Please enter a valid Northeast Basecamp booking reference");
+  if (action === "checkin" && (!record.idType || !record.idNumber)) throw new Error("ID type and ID number are required for check-in");
+  if (record.idNumber.length > 255 || record.notes.length > 2_000) throw new Error("One of the entered details is too long");
+  return record;
+}
+
+async function syncCheckinToGoogleSheet(record) {
+  if (!checkinSheetWebhookUrl) return "not-configured";
+  try {
+    const response = await fetch(checkinSheetWebhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(checkinSheetWebhookSecret ? { "X-NBC-Sync-Secret": checkinSheetWebhookSecret } : {})
+      },
+      body: JSON.stringify({ ...record, syncSecret: checkinSheetWebhookSecret })
+    });
+    if (!response.ok) throw new Error(`Google Sheet sync returned ${response.status}`);
+    return "synced";
+  } catch (error) {
+    console.error("Google Check-in Sheet sync failed.", error.message);
+    return "pending";
+  }
+}
+
+async function saveCheckin(input) {
+  const record = { id: createReference("NBCI"), createdAt: new Date().toISOString(), ...input };
+  const pool = await getStoragePool();
+  let savedRecord;
+  if (pool) {
+    try {
+      if (record.action === "checkout") {
+        const [matches] = await pool.execute(
+          `SELECT id, guest_name, phone, email, booking_reference, tent_number, id_type, id_number, check_in_at, notes
+           FROM guest_checkins WHERE phone = ? AND guest_name = ? AND status = 'checked-in'
+           ORDER BY check_in_at DESC LIMIT 1`,
+          [record.phone, record.guestName]
+        );
+        if (matches.length === 0) throw new Error("No active check-in was found for these guest details");
+        const existing = matches[0];
+        const checkedOutAt = new Date().toISOString();
+        await pool.execute("UPDATE guest_checkins SET check_out_at = ?, status = 'checked-out', notes = ? WHERE id = ?", [checkedOutAt.slice(0, 19).replace("T", " "), record.notes || existing.notes || null, existing.id]);
+        savedRecord = { ...existing, id: existing.id, createdAt: record.createdAt, guestName: existing.guest_name, phone: existing.phone, email: existing.email || "", bookingReference: existing.booking_reference || "", tentNumber: existing.tent_number || "", idType: existing.id_type || "", idNumber: existing.id_number || "", checkInAt: existing.check_in_at, checkOutAt: checkedOutAt, status: "checked-out", notes: record.notes || existing.notes || "" };
+      } else {
+        const checkedInAt = new Date().toISOString();
+        await pool.execute(
+          `INSERT INTO guest_checkins (id, created_at, guest_name, phone, email, booking_reference, tent_number, id_type, id_number, check_in_at, status, notes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'checked-in', ?)`,
+          [record.id, record.createdAt.slice(0, 19).replace("T", " "), record.guestName, record.phone, record.email || null, record.bookingReference || null, record.tentNumber || null, record.idType, record.idNumber, checkedInAt.slice(0, 19).replace("T", " "), record.notes || null]
+        );
+        savedRecord = { ...record, checkInAt: checkedInAt, checkOutAt: "", status: "checked-in" };
+      }
+    } catch (error) {
+      console.error("MySQL check-in save failed.", error.message);
+      if (error.message === "No active check-in was found for these guest details") throw error;
+      throw error instanceof StorageUnavailableError ? error : new StorageUnavailableError();
+    }
+  } else {
+    const records = await readLocalRecords(checkinsFile);
+    if (record.action === "checkout") {
+      const existing = [...records].reverse().find((entry) => entry.phone === record.phone && entry.guestName === record.guestName && entry.status === "checked-in");
+      if (!existing) throw new Error("No active check-in was found for these guest details");
+      existing.checkOutAt = new Date().toISOString(); existing.status = "checked-out"; existing.notes = record.notes || existing.notes || ""; savedRecord = existing;
+    } else { savedRecord = { ...record, checkInAt: new Date().toISOString(), checkOutAt: "", status: "checked-in" }; records.push(savedRecord); }
+    await mkdir(dirname(checkinsFile), { recursive: true });
+    await writeFile(checkinsFile, `${JSON.stringify(records, null, 2)}\n`);
+  }
+  const sheetSync = await syncCheckinToGoogleSheet(savedRecord);
+  return { ...savedRecord, sheetSync };
+}
+
+async function readLocalRecords(filePath) {
+  try { const records = JSON.parse(await readFile(filePath, "utf8")); return Array.isArray(records) ? records : []; } catch { return []; }
 }
 
 function cleanContestEntry(input) {
@@ -1912,6 +2030,16 @@ const server = createServer(async (req, res) => {
       sendJson(res, 201, { ok: true, reference: record.id });
     } catch (error) {
       sendJson(res, error.statusCode || 400, { ok: false, message: error.message });
+    }
+    return;
+  }
+
+  if (req.method === "POST" && requestUrl.pathname === "/api/guest-checkins") {
+    try {
+      const record = await saveCheckin(cleanCheckin(await readJsonBody(req)));
+      sendJson(res, 201, { ok: true, reference: record.id, status: record.status, sheetSync: record.sheetSync });
+    } catch (error) {
+      sendJson(res, error.statusCode || 400, { ok: false, message: error.message || "Guest details could not be saved." });
     }
     return;
   }

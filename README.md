@@ -53,6 +53,8 @@ NODE_ENV=production
 REQUIRE_DATABASE=true
 ADMIN_USERNAME=your_private_admin_username
 ADMIN_PASSWORD=your_long_unique_admin_password
+GOOGLE_CHECKIN_SHEET_WEBHOOK_URL=your_google_apps_script_web_app_url
+GOOGLE_CHECKIN_SHEET_WEBHOOK_SECRET=your_long_random_shared_secret
 ```
 
 Do not commit the real password to GitHub. Use Hostinger's Environment Variables screen or import a private `.env` file during deployment.
@@ -62,6 +64,12 @@ Do not commit the real password to GitHub. Use Hostinger's Environment Variables
 Open `/admin` and sign in with `ADMIN_USERNAME` and `ADMIN_PASSWORD`. Both values are required in Hostinger before the private area can be opened. The CRM supports manual leads, search and status filtering, booking-reference linking, quoted prices in INR, scheduled follow-ups, interaction notes and conversion of website enquiries into leads. Leads and bookings can be deleted from the active workspace and restored from the recycle bin; booking data and invoice PDFs are retained. Archived leads can also be permanently deleted, which removes the lead and its interaction history. Booking Operations is a private per-booking record for payment progress, amount due, pickup and drop plans, meals, ID-proof progress, guest requests, staff assignments and notes. Saving it updates the booking status and its operations record together, while preserving the guest invoice. Tent Operations records each physical Dome, Alpine or Premium tent and lets staff allot it to a booking. An allotment is checked against the booked package's tent type, guest capacity, operational status and overlapping dates before it is saved. The server creates the `leads`, `lead_activities`, `booking_operations`, `tent_units` and `tent_allocations` tables automatically; `database.sql` contains the same schema for manual setup.
 
 The app creates the required tables automatically on first database use. You can also run `database.sql` manually in phpMyAdmin. The `/healthz` response returns HTTP 200 with `database: "ok"` only after it can connect to MySQL; a production database problem returns HTTP 503.
+
+## Guest check-in QR and Google Sheet
+
+Guests can check in or check out at `/guest-checkin.html`; the QR image is `assets/guest-qr/guest-checkin.png`. Check-in requires the guest's name, mobile number, ID type and ID number, while tent number and booking reference are optional. The database retains the operational guest record and checkout updates the active matching guest record.
+
+The connected Google Drive has a dedicated [Guest Check-in Register](https://docs.google.com/spreadsheets/d/1oe_J4XjaeFX74wr2ntMWPN_DvTcaGb4g5BKHjtzQU2I/edit). To enable automatic spreadsheet updates, create an Apps Script project from `google-apps-script-checkin-sync.gs`, deploy it as a Web App, then set the two `GOOGLE_CHECKIN_SHEET_*` variables in Hostinger. The secret in the script must exactly match `GOOGLE_CHECKIN_SHEET_WEBHOOK_SECRET`; keep it private. Until those settings are added, check-ins remain safely stored in MySQL and the sheet sync reports as not configured.
 
 ### Preserving existing bookings
 

@@ -147,3 +147,23 @@ CREATE TABLE IF NOT EXISTS storage_migrations (
   name VARCHAR(128) PRIMARY KEY,
   completed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS guest_checkins (
+  id VARCHAR(40) PRIMARY KEY,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  guest_name VARCHAR(255) NOT NULL,
+  phone VARCHAR(64) NOT NULL,
+  email VARCHAR(255) NULL,
+  booking_reference VARCHAR(40) NULL,
+  tent_number VARCHAR(64) NULL,
+  id_type VARCHAR(64) NULL,
+  id_number VARCHAR(255) NULL,
+  check_in_at DATETIME NULL,
+  check_out_at DATETIME NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'checked-in',
+  notes TEXT NULL,
+  INDEX guest_checkins_booking_reference (booking_reference),
+  INDEX guest_checkins_phone (phone),
+  INDEX guest_checkins_status (status)
+);

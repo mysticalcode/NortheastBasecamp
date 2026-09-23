@@ -6,10 +6,12 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const outputDirectory = join(root, "assets", "creator-qr");
 const menuOutputDirectory = join(root, "assets", "menu-qr");
+const guestQrOutputDirectory = join(root, "assets", "guest-qr");
 const codes = ["NBC-CREATOR-01", "NBC-CREATOR-02", "NBC-CREATOR-03", "NBC-CREATOR-04", "NBC-CREATOR-05"];
 
 await mkdir(outputDirectory, { recursive: true });
 await mkdir(menuOutputDirectory, { recursive: true });
+await mkdir(guestQrOutputDirectory, { recursive: true });
 for (const code of codes) {
   const url = `https://northeastbasecamp.com/?ref=${encodeURIComponent(code)}#book`;
   await QRCode.toFile(join(outputDirectory, `${code.toLowerCase()}.png`), url, {
@@ -19,6 +21,13 @@ for (const code of codes) {
     color: { dark: "#034C3D", light: "#FFFDF7" }
   });
 }
+
+await QRCode.toFile(join(guestQrOutputDirectory, "guest-checkin.png"), "https://northeastbasecamp.com/guest-checkin.html", {
+  errorCorrectionLevel: "M",
+  margin: 2,
+  width: 720,
+  color: { dark: "#064B37", light: "#FFFDF7" }
+});
 
 for (const [name, url] of Object.entries({
   "cafe-menu": "https://northeastbasecamp.com/cafe.html",

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#064b37">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Guest Check-in | Northeast Basecamp</title>
+    <link rel="icon" href="/assets/nbc-logo.png">
+    <link rel="stylesheet" href="/guest-checkin.css?v=20260923-1">
+  </head>
+  <body>
+    <main class="checkin-shell">
+      <header class="checkin-brand"><a href="/"><img src="/assets/nbc-logo.png" alt="Northeast Basecamp"><span>Northeast Basecamp</span></a><p>Guest check-in</p></header>
+      <section class="checkin-card">
+        <p class="eyebrow">Welcome to the valley</p>
+        <h1>Check in with ease.</h1>
+        <p class="intro">Please share your guest details and valid government ID. Your information is used only for campsite operations and your stay record.</p>
+        <form id="guestCheckinForm" novalidate>
+          <fieldset class="action-toggle"><legend>What would you like to do?</legend><label><input type="radio" name="action" value="checkin" checked> Check in</label><label><input type="radio" name="action" value="checkout"> Check out</label></fieldset>
+          <div class="form-grid">
+            <label>Guest name <em>*</em><input name="guestName" autocomplete="name" required placeholder="Full name"></label>
+            <label>Mobile number <em>*</em><input name="phone" autocomplete="tel" inputmode="tel" required placeholder="+91 98765 43210"></label>
+            <label>Email <span>optional</span><input name="email" autocomplete="email" inputmode="email" placeholder="you@example.com"></label>
+            <label>Booking reference <span>optional</span><input name="bookingReference" autocapitalize="characters" placeholder="NBC-XXXX-XXXX"></label>
+            <label>Tent number <span>optional</span><input name="tentNumber" placeholder="Example: D-01"></label>
+            <label class="checkin-only">Government ID type <em>*</em><select name="idType" required><option value="">Select ID type</option><option>Aadhaar</option><option>Driving licence</option><option>Passport</option><option>Voter ID</option><option>Other government ID</option></select></label>
+            <label class="wide checkin-only">Government ID number <em>*</em><input name="idNumber" required autocapitalize="characters" placeholder="Enter the ID number exactly as shown"></label>
+            <label class="wide">Notes <span>optional</span><textarea name="notes" rows="3" placeholder="Arrival notes, accessibility requirements or anything our team should know"></textarea></label>
+          </div>
+          <p class="privacy">By submitting, you confirm these details are accurate. Please do not upload ID images or payment information through this form.</p>
+          <p id="formStatus" class="form-status" role="status" aria-live="polite"></p>
+          <button type="submit" id="submitButton">Submit check-in</button>
+        </form>
+      </section>
+      <p class="help">Need help? Please contact the Northeast Basecamp team.</p>
+    </main>
+    <script src="/guest-checkin.js?v=20260923-1" defer></script>
+  </body>
+</html>
