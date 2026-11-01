@@ -67,7 +67,7 @@ The app creates the required tables automatically on first database use. You can
 
 ## Guest check-in QR and Google Sheet
 
-Guests can check in or check out at `/guest-checkin.html`; the QR image is `assets/guest-qr/guest-checkin.png`. Check-in requires the guest's name, mobile number, ID type and ID number, while tent number and booking reference are optional. The database retains the operational guest record and checkout updates the active matching guest record.
+Guests can check in or check out at `/guest-checkin.html`; the QR image is `assets/guest-qr/guest-checkin.png`. Check-in requires the guest's name, mobile number, ID type, ID number and a government-ID PDF, JPG, PNG or WEBP document up to 10 MB; tent number and booking reference are optional. The ID file is stored with the protected MySQL guest record and is never copied to the Google Sheet. Checkout updates the active matching guest record and does not ask for the document again.
 
 The connected Google Drive has a dedicated [Guest Check-in Register](https://docs.google.com/spreadsheets/d/1oe_J4XjaeFX74wr2ntMWPN_DvTcaGb4g5BKHjtzQU2I/edit). To enable automatic spreadsheet updates, create an Apps Script project from `google-apps-script-checkin-sync.gs`, deploy it as a Web App, then set the two `GOOGLE_CHECKIN_SHEET_*` variables in Hostinger. The secret in the script must exactly match `GOOGLE_CHECKIN_SHEET_WEBHOOK_SECRET`; keep it private. Until those settings are added, check-ins remain safely stored in MySQL and the sheet sync reports as not configured.
 

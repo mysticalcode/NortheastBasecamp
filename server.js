@@ -356,6 +356,9 @@ async function initializeDatabase(pool) {
       tent_number VARCHAR(64) NULL,
       id_type VARCHAR(64) NULL,
       id_number VARCHAR(255) NULL,
+      id_document_name VARCHAR(255) NULL,
+      id_document_content_type VARCHAR(100) NULL,
+      id_document_data LONGBLOB NULL,
       check_in_at DATETIME NULL,
       check_out_at DATETIME NULL,
       status VARCHAR(32) NOT NULL DEFAULT 'checked-in',
@@ -365,6 +368,16 @@ async function initializeDatabase(pool) {
       INDEX guest_checkins_status (status)
     )
   `);
+
+  const [checkinColumns] = await pool.query("SHOW COLUMNS FROM guest_checkins");
+  const checkinColumnNames = new Set(checkinColumns.map((column) => column.Field));
+  for (const [name, definition] of [
+    ["id_document_name", "VARCHAR(255) NULL"],
+    ["id_document_content_type", "VARCHAR(100) NULL"],
+    ["id_document_data", "LONGBLOB NULL"]
+  ]) {
+    if (!checkinColumnNames.has(name)) await pool.query(`ALTER TABLE guest_checkins ADD COLUMN ${name} ${definition}`);
+  }
 }
 
 function positiveInteger(value, fallback = 1) {
@@ -540,11 +553,13 @@ async function getStoragePool() {
   return null;
 }
 
-async function readJsonBody(req) {
+async function readJsonBody(req, maxBytes = 20_000) {
   const chunks = [];
+  let size = 0;
   for await (const chunk of req) {
     chunks.push(chunk);
-    if (Buffer.concat(chunks).length > 20_000) {
+    size += chunk.length;
+    if (size > maxBytes) {
       throw new Error("Payload too large");
     }
   }
@@ -655,6 +670,7 @@ function cleanCheckin(input) {
     tentNumber: String(input.tentNumber || "").trim(),
     idType: String(input.idType || "").trim(),
     idNumber: String(input.idNumber || "").trim(),
+    idDocument: input.idDocument || null,
     notes: String(input.notes || "").trim()
   };
 
@@ -663,21 +679,37 @@ function cleanCheckin(input) {
   cleanPhone(record.phone);
   if (record.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(record.email)) throw new Error("Please enter a valid email address");
   if (record.bookingReference && !/^NBC-[A-Z0-9]+-[A-Z0-9]+$/.test(record.bookingReference)) throw new Error("Please enter a valid Northeast Basecamp booking reference");
-  if (action === "checkin" && (!record.idType || !record.idNumber)) throw new Error("ID type and ID number are required for check-in");
+  if (action === "checkin" && (!record.idType || !record.idNumber || !record.idDocument)) throw new Error("ID type, ID number and a government ID document are required for check-in");
   if (record.idNumber.length > 255 || record.notes.length > 2_000) throw new Error("One of the entered details is too long");
+  if (record.idDocument) {
+    const documentName = String(record.idDocument.name || "").trim().slice(0, 255);
+    const contentType = String(record.idDocument.type || "").trim().toLowerCase();
+    const encoded = String(record.idDocument.data || "").replace(/^data:[^;]+;base64,/, "");
+    const allowedDocumentTypes = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
+    if (!documentName || !allowedDocumentTypes.has(contentType) || !/^[A-Za-z0-9+/=]+$/.test(encoded)) throw new Error("Upload a PDF, JPG, PNG or WEBP government ID document");
+    const documentData = Buffer.from(encoded, "base64");
+    if (documentData.length === 0 || documentData.length > 10 * 1024 * 1024) throw new Error("Government ID document must be 10 MB or smaller");
+    record.idDocument = { name: documentName, contentType, data: documentData };
+  }
   return record;
 }
 
 async function syncCheckinToGoogleSheet(record) {
   if (!checkinSheetWebhookUrl) return "not-configured";
   try {
+    // Never forward the raw government-ID file to a spreadsheet or external sync endpoint.
+    const { idDocument, ...recordWithoutDocument } = record;
     const response = await fetch(checkinSheetWebhookUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(checkinSheetWebhookSecret ? { "X-NBC-Sync-Secret": checkinSheetWebhookSecret } : {})
       },
-      body: JSON.stringify({ ...record, syncSecret: checkinSheetWebhookSecret })
+      body: JSON.stringify({
+        ...recordWithoutDocument,
+        idDocument: idDocument ? { name: idDocument.name, contentType: idDocument.contentType } : null,
+        syncSecret: checkinSheetWebhookSecret
+      })
     });
     if (!response.ok) throw new Error(`Google Sheet sync returned ${response.status}`);
     return "synced";
@@ -708,11 +740,11 @@ async function saveCheckin(input) {
       } else {
         const checkedInAt = new Date().toISOString();
         await pool.execute(
-          `INSERT INTO guest_checkins (id, created_at, guest_name, phone, email, booking_reference, tent_number, id_type, id_number, check_in_at, status, notes)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'checked-in', ?)`,
-          [record.id, record.createdAt.slice(0, 19).replace("T", " "), record.guestName, record.phone, record.email || null, record.bookingReference || null, record.tentNumber || null, record.idType, record.idNumber, checkedInAt.slice(0, 19).replace("T", " "), record.notes || null]
+          `INSERT INTO guest_checkins (id, created_at, guest_name, phone, email, booking_reference, tent_number, id_type, id_number, id_document_name, id_document_content_type, id_document_data, check_in_at, status, notes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'checked-in', ?)`,
+          [record.id, record.createdAt.slice(0, 19).replace("T", " "), record.guestName, record.phone, record.email || null, record.bookingReference || null, record.tentNumber || null, record.idType, record.idNumber, record.idDocument.name, record.idDocument.contentType, record.idDocument.data, checkedInAt.slice(0, 19).replace("T", " "), record.notes || null]
         );
-        savedRecord = { ...record, checkInAt: checkedInAt, checkOutAt: "", status: "checked-in" };
+        savedRecord = { ...record, idDocument: { name: record.idDocument.name, contentType: record.idDocument.contentType }, checkInAt: checkedInAt, checkOutAt: "", status: "checked-in" };
       }
     } catch (error) {
       console.error("MySQL check-in save failed.", error.message);
@@ -725,7 +757,7 @@ async function saveCheckin(input) {
       const existing = [...records].reverse().find((entry) => entry.phone === record.phone && entry.guestName === record.guestName && entry.status === "checked-in");
       if (!existing) throw new Error("No active check-in was found for these guest details");
       existing.checkOutAt = new Date().toISOString(); existing.status = "checked-out"; existing.notes = record.notes || existing.notes || ""; savedRecord = existing;
-    } else { savedRecord = { ...record, checkInAt: new Date().toISOString(), checkOutAt: "", status: "checked-in" }; records.push(savedRecord); }
+    } else { savedRecord = { ...record, idDocument: { name: record.idDocument.name, contentType: record.idDocument.contentType, data: record.idDocument.data.toString("base64") }, checkInAt: new Date().toISOString(), checkOutAt: "", status: "checked-in" }; records.push(savedRecord); }
     await mkdir(dirname(checkinsFile), { recursive: true });
     await writeFile(checkinsFile, `${JSON.stringify(records, null, 2)}\n`);
   }
@@ -2036,7 +2068,7 @@ const server = createServer(async (req, res) => {
 
   if (req.method === "POST" && requestUrl.pathname === "/api/guest-checkins") {
     try {
-      const record = await saveCheckin(cleanCheckin(await readJsonBody(req)));
+      const record = await saveCheckin(cleanCheckin(await readJsonBody(req, 15 * 1024 * 1024)));
       sendJson(res, 201, { ok: true, reference: record.id, status: record.status, sheetSync: record.sheetSync });
     } catch (error) {
       sendJson(res, error.statusCode || 400, { ok: false, message: error.message || "Guest details could not be saved." });

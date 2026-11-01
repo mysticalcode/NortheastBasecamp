@@ -7,7 +7,7 @@
     <meta name="robots" content="noindex, nofollow">
     <title>Guest Check-in | Northeast Basecamp</title>
     <link rel="icon" href="/assets/nbc-logo.png">
-    <link rel="stylesheet" href="/guest-checkin.css?v=20260923-1">
+    <link rel="stylesheet" href="/guest-checkin.css?v=20260924-1">
   </head>
   <body>
     <main class="checkin-shell">
@@ -26,15 +26,16 @@
             <label>Tent number <span>optional</span><input name="tentNumber" placeholder="Example: D-01"></label>
             <label class="checkin-only">Government ID type <em>*</em><select name="idType" required><option value="">Select ID type</option><option>Aadhaar</option><option>Driving licence</option><option>Passport</option><option>Voter ID</option><option>Other government ID</option></select></label>
             <label class="wide checkin-only">Government ID number <em>*</em><input name="idNumber" required autocapitalize="characters" placeholder="Enter the ID number exactly as shown"></label>
+            <label class="wide checkin-only">Government ID document <em>*</em><input name="idDocument" type="file" required accept="application/pdf,image/jpeg,image/png,image/webp"><small>PDF, JPG, PNG or WEBP only · maximum 10 MB</small></label>
             <label class="wide">Notes <span>optional</span><textarea name="notes" rows="3" placeholder="Arrival notes, accessibility requirements or anything our team should know"></textarea></label>
           </div>
-          <p class="privacy">By submitting, you confirm these details are accurate. Please do not upload ID images or payment information through this form.</p>
+          <p class="privacy">By submitting, you confirm these details are accurate. Government ID documents are stored only for campsite operations. Do not upload payment information through this form.</p>
           <p id="formStatus" class="form-status" role="status" aria-live="polite"></p>
           <button type="submit" id="submitButton">Submit check-in</button>
         </form>
       </section>
       <p class="help">Need help? Please contact the Northeast Basecamp team.</p>
     </main>
-    <script src="/guest-checkin.js?v=20260923-1" defer></script>
+    <script src="/guest-checkin.js?v=20260924-1" defer></script>
   </body>
 </html>

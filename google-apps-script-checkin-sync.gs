@@ -17,7 +17,8 @@ function doPost(event) {
   if (!CHECKIN_SYNC_SECRET || body.syncSecret !== CHECKIN_SYNC_SECRET) return json({ ok: false, message: "Unauthorized" });
   const sheet = SpreadsheetApp.openById(CHECKIN_SHEET_ID).getSheetByName(CHECKIN_TAB);
   const values = sheet.getDataRange().getValues();
-  const rowValues = [body.id, body.createdAt || new Date().toISOString(), body.guestName, body.phone, body.email || "", body.bookingReference || "", body.tentNumber || "", body.idType || "", body.idNumber || "", "", body.checkInAt || "", body.checkOutAt || "", body.status || "", body.notes || ""];
+  // Only a storage marker is recorded here; the actual government-ID file remains in the protected campsite database.
+  const rowValues = [body.id, body.createdAt || new Date().toISOString(), body.guestName, body.phone, body.email || "", body.bookingReference || "", body.tentNumber || "", body.idType || "", body.idNumber || "", body.idDocument ? "Stored securely in CRM" : "", body.checkInAt || "", body.checkOutAt || "", body.status || "", body.notes || ""];
   const existingIndex = values.findIndex((row, index) => index >= 4 && row[0] === body.id);
   if (existingIndex >= 0) sheet.getRange(existingIndex + 1, 1, 1, rowValues.length).setValues([rowValues]);
   else sheet.appendRow(rowValues);

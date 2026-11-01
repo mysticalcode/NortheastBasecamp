@@ -275,6 +275,73 @@ a {
   position: absolute;
 }
 
+.festival-archive {
+  display: none !important;
+}
+
+.festival-spotlight {
+  background: linear-gradient(135deg, rgba(255, 253, 247, 0.92), rgba(255, 235, 220, 0.86));
+}
+
+.festival-spotlight-grid {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.festival-spotlight-card {
+  background: var(--cream);
+  border: 1px solid rgba(6, 75, 55, 0.14);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.festival-spotlight-card > img {
+  aspect-ratio: 4 / 4.7;
+  object-fit: cover;
+  width: 100%;
+}
+
+.festival-spotlight-card > div {
+  padding: 24px;
+}
+
+.festival-spotlight-card h3 {
+  color: var(--forest);
+  font-family: "Bebas Neue", Impact, sans-serif;
+  font-size: clamp(2.2rem, 4vw, 3.6rem);
+  letter-spacing: 0.02em;
+  line-height: 0.92;
+  margin: 8px 0 12px;
+}
+
+.festival-spotlight-card p:not(.tag) {
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0 0 20px;
+}
+
+.festival-spotlight-card .button {
+  display: inline-flex;
+  justify-content: center;
+}
+
+.festival-campaign-gallery {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 24px;
+}
+
+.festival-campaign-gallery img {
+  aspect-ratio: 1 / 1.25;
+  border-radius: 18px;
+  box-shadow: 0 14px 38px rgba(6, 75, 55, 0.14);
+  object-fit: cover;
+  width: 100%;
+}
+
 .hero-rhythm {
   align-items: end;
   bottom: 110px;
@@ -2470,6 +2537,15 @@ textarea:focus {
 }
 
 @media (max-width: 560px) {
+  .festival-spotlight-grid,
+  .festival-campaign-gallery {
+    grid-template-columns: 1fr;
+  }
+
+  .festival-spotlight-card > div {
+    padding: 20px;
+  }
+
   .site-header {
     border-radius: 18px;
     gap: 12px;
