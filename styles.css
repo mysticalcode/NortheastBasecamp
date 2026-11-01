@@ -234,6 +234,10 @@ a {
 }
 
 .hero {
+  background:
+    radial-gradient(circle at 82% 20%, rgba(255, 161, 101, 0.85), transparent 23%),
+    radial-gradient(circle at 77% 72%, rgba(247, 194, 26, 0.46), transparent 29%),
+    linear-gradient(135deg, #063f30 0%, #076446 54%, #147a59 100%);
   min-height: 96vh;
   overflow: hidden;
   padding: 150px 6vw 64px;
@@ -297,14 +301,43 @@ a {
   overflow: hidden;
 }
 
-.festival-spotlight-card > img {
-  aspect-ratio: 4 / 4.7;
-  object-fit: cover;
-  width: 100%;
+.festival-spotlight-card > div {
+  min-height: 370px;
+  padding: 32px;
+  position: relative;
 }
 
-.festival-spotlight-card > div {
-  padding: 24px;
+.festival-spotlight-card > div::after {
+  color: rgba(6, 75, 55, 0.09);
+  font-family: "Bebas Neue", Impact, sans-serif;
+  font-size: clamp(5rem, 13vw, 10rem);
+  line-height: .7;
+  pointer-events: none;
+  position: absolute;
+  right: 16px;
+  top: 24px;
+}
+
+.festival-spotlight-card.hornbill > div { background: linear-gradient(145deg, #fffdf7, #f7eadb); }
+.festival-spotlight-card.cherry > div { background: linear-gradient(145deg, #fffdf7, #fbe4eb); }
+.festival-spotlight-card.hornbill > div::after { content: "NAGA"; }
+.festival-spotlight-card.cherry > div::after { content: "BLOOM"; }
+
+.festival-spotlight-card > div > * { position: relative; z-index: 1; }
+
+.festival-details {
+  color: var(--muted);
+  display: grid;
+  font-size: .92rem;
+  gap: 9px;
+  line-height: 1.45;
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 0;
+}
+
+.festival-details li { padding-left: 19px; position: relative; }
+.festival-details li::before { color: var(--leaf); content: "✦"; left: 0; position: absolute; }
 }
 
 .festival-spotlight-card h3 {
@@ -334,12 +367,20 @@ a {
   margin-top: 24px;
 }
 
-.festival-campaign-gallery img {
-  aspect-ratio: 1 / 1.25;
+.festival-campaign-gallery article {
+  background: #fffdf7;
+  border: 1px solid rgba(6, 75, 55, 0.14);
   border-radius: 18px;
   box-shadow: 0 14px 38px rgba(6, 75, 55, 0.14);
-  object-fit: cover;
-  width: 100%;
+  display: grid;
+  gap: 8px;
+  min-height: 180px;
+  padding: 22px;
+}
+
+.festival-campaign-gallery strong { color: var(--forest); font-size: 1.1rem; }
+.festival-campaign-gallery p { color: var(--muted); line-height: 1.5; margin: 0; }
+.festival-icon { color: var(--orange); font-size: 2rem; font-weight: 900; }
 }
 
 .hero-rhythm {

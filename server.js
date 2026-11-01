@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,6 +20,15 @@ const invoicesDirectory = join(__dirname, "data", "invoices");
 const checkinsFile = join(__dirname, "data", "checkins.json");
 const checkinSheetWebhookUrl = process.env.GOOGLE_CHECKIN_SHEET_WEBHOOK_URL || "";
 const checkinSheetWebhookSecret = process.env.GOOGLE_CHECKIN_SHEET_WEBHOOK_SECRET || "";
+const payuKey = String(process.env.PAYU_KEY || "").trim();
+const payuSalt = String(process.env.PAYU_SALT || "").trim();
+const payuMode = String(process.env.PAYU_MODE || "test").trim().toLowerCase() === "production" ? "production" : "test";
+const publicBaseUrl = String(process.env.PUBLIC_BASE_URL || "https://northeastbasecamp.com").trim().replace(/\/$/, "");
+const payuPaymentUrl = payuMode === "production" ? "https://secure.payu.in/_payment" : "https://test.payu.in/_payment";
+const festivalPaymentProducts = {
+  hornbill: { festival: "Hornbill Festival", label: "Hornbill Festival stay booking", amount: Number.parseInt(process.env.HORNBILL_BOOKING_ADVANCE || "0", 10) },
+  "cherry-blossom": { festival: "Shillong Cherry Blossom Festival", label: "Cherry Blossom Festival stay booking", amount: Number.parseInt(process.env.CHERRY_BLOSSOM_BOOKING_ADVANCE || "0", 10) }
+};
 const ziroFestival = "Ziro Music Festival 2026";
 const dinnerRatePerGuestNight = 400;
 const creatorReferralCodes = new Set([
@@ -378,6 +387,27 @@ async function initializeDatabase(pool) {
   ]) {
     if (!checkinColumnNames.has(name)) await pool.query(`ALTER TABLE guest_checkins ADD COLUMN ${name} ${definition}`);
   }
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS festival_payment_orders (
+      id VARCHAR(40) PRIMARY KEY,
+      txn_id VARCHAR(64) NOT NULL UNIQUE,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      festival VARCHAR(255) NOT NULL,
+      product_code VARCHAR(64) NOT NULL,
+      guests INT NOT NULL,
+      amount DECIMAL(10,2) NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      phone VARCHAR(64) NOT NULL,
+      payment_status VARCHAR(32) NOT NULL DEFAULT 'pending',
+      payu_payment_id VARCHAR(128) NULL,
+      payu_response TEXT NULL,
+      INDEX festival_payment_orders_status (payment_status),
+      INDEX festival_payment_orders_created (created_at)
+    )
+  `);
 }
 
 function positiveInteger(value, fallback = 1) {
@@ -554,6 +584,10 @@ async function getStoragePool() {
 }
 
 async function readJsonBody(req, maxBytes = 20_000) {
+  return JSON.parse((await readTextBody(req, maxBytes)) || "{}");
+}
+
+async function readTextBody(req, maxBytes = 20_000) {
   const chunks = [];
   let size = 0;
   for await (const chunk of req) {
@@ -563,7 +597,41 @@ async function readJsonBody(req, maxBytes = 20_000) {
       throw new Error("Payload too large");
     }
   }
-  return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+function sha512(value) {
+  return createHash("sha512").update(value).digest("hex");
+}
+
+function safeTextEqual(left, right) {
+  const leftBuffer = Buffer.from(String(left || ""));
+  const rightBuffer = Buffer.from(String(right || ""));
+  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function payuIsConfigured() {
+  return Boolean(payuKey && payuSalt && /^https:\/\//.test(publicBaseUrl));
+}
+
+function cleanFestivalPayment(input) {
+  const productCode = String(input.productCode || "").trim().toLowerCase();
+  const product = festivalPaymentProducts[productCode];
+  const name = String(input.name || "").trim();
+  const email = cleanEmail(input.email);
+  const phone = String(input.phone || "").trim();
+  const guests = Number(input.guests || 0);
+
+  if (!product) throw new Error("Please choose Hornbill or Cherry Blossom.");
+  if (!name || name.length > 255) throw new Error("Please enter the guest name.");
+  if (!Number.isInteger(guests) || guests < 1 || guests > 12) throw new Error("Guest count must be between 1 and 12.");
+  if (phone.replace(/\D/g, "").length < 7 || phone.replace(/\D/g, "").length > 15) throw new Error("Please enter a valid mobile number.");
+  if (!Number.isSafeInteger(product.amount) || product.amount <= 0) {
+    const error = new Error("Online payment is not available for this festival yet. Please contact Northeast Basecamp for availability.");
+    error.statusCode = 503;
+    throw error;
+  }
+  return { productCode, product, name, email, phone, guests, amount: product.amount * guests };
 }
 
 function cleanBooking(input) {
@@ -1150,6 +1218,89 @@ async function saveBooking(booking) {
   await writeLocalInvoice(record, invoiceData);
   await appendLocalRecord(bookingsFile, record);
   return record;
+}
+
+async function createFestivalPaymentOrder(payment) {
+  if (!payuIsConfigured()) {
+    const error = new Error("Online payments are being set up. Please contact Northeast Basecamp to reserve your festival stay.");
+    error.statusCode = 503;
+    throw error;
+  }
+  const pool = await getStoragePool();
+  if (!pool) throw new StorageUnavailableError();
+
+  const id = createReference("NBPAY");
+  const txnid = `${id}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  const amount = payment.amount.toFixed(2);
+  try {
+    await pool.execute(
+      `INSERT INTO festival_payment_orders
+       (id, txn_id, festival, product_code, guests, amount, name, email, phone, payment_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+      [id, txnid, payment.product.festival, payment.productCode, payment.guests, amount, payment.name, payment.email, payment.phone]
+    );
+  } catch (error) {
+    console.error("Festival payment order insert failed.", error.message);
+    throw new StorageUnavailableError();
+  }
+
+  const fields = {
+    key: payuKey,
+    txnid,
+    amount,
+    productinfo: payment.product.label,
+    firstname: payment.name,
+    email: payment.email,
+    phone: payment.phone,
+    surl: `${publicBaseUrl}/api/payu/callback`,
+    furl: `${publicBaseUrl}/api/payu/callback`,
+    udf1: id,
+    udf2: payment.productCode,
+    udf3: String(payment.guests),
+    udf4: "",
+    udf5: ""
+  };
+  fields.hash = sha512(`${fields.key}|${fields.txnid}|${fields.amount}|${fields.productinfo}|${fields.firstname}|${fields.email}|${fields.udf1}|${fields.udf2}|${fields.udf3}|${fields.udf4}|${fields.udf5}||||||${payuSalt}`);
+  return { id, amount, action: payuPaymentUrl, fields };
+}
+
+function payuResponseHash(payload) {
+  const additionalCharges = String(payload.additional_charges || "").trim();
+  const base = `${payuSalt}|${payload.status || ""}||||||${payload.udf5 || ""}|${payload.udf4 || ""}|${payload.udf3 || ""}|${payload.udf2 || ""}|${payload.udf1 || ""}|${payload.email || ""}|${payload.firstname || ""}|${payload.productinfo || ""}|${payload.amount || ""}|${payload.txnid || ""}|${payload.key || ""}`;
+  return sha512(additionalCharges ? `${additionalCharges}|${base}` : base);
+}
+
+async function completeFestivalPayment(payload) {
+  if (!payuIsConfigured()) throw new Error("Payment verification is not configured.");
+  const orderId = String(payload.udf1 || "").trim().toUpperCase();
+  if (!/^NBPAY-[A-Z0-9]+-[A-Z0-9]+$/.test(orderId)) throw new Error("Invalid payment reference.");
+  const pool = await getStoragePool();
+  if (!pool) throw new StorageUnavailableError();
+  const [rows] = await pool.execute("SELECT id, txn_id, amount FROM festival_payment_orders WHERE id = ? LIMIT 1", [orderId]);
+  const order = rows[0];
+  if (!order) throw new Error("Payment order was not found.");
+
+  const responseIsValid = safeTextEqual(payload.key, payuKey)
+    && safeTextEqual(payload.txnid, order.txn_id)
+    && safeTextEqual(Number(payload.amount || 0).toFixed(2), Number(order.amount).toFixed(2))
+    && safeTextEqual(payload.hash, payuResponseHash(payload));
+  const status = responseIsValid && String(payload.status || "").toLowerCase() === "success" ? "paid" : "failed";
+  const responseForStorage = JSON.stringify({ status: payload.status || "", unmappedstatus: payload.unmappedstatus || "", mihpayid: payload.mihpayid || "", error: payload.error || "", error_Message: payload.error_Message || "", receivedAt: new Date().toISOString(), verified: responseIsValid });
+  await pool.execute(
+    "UPDATE festival_payment_orders SET payment_status = ?, payu_payment_id = ?, payu_response = ? WHERE id = ?",
+    [status, String(payload.mihpayid || "").slice(0, 128) || null, responseForStorage, orderId]
+  );
+  return { id: orderId, status };
+}
+
+async function getFestivalPaymentStatus(orderId) {
+  const id = String(orderId || "").trim().toUpperCase();
+  if (!/^NBPAY-[A-Z0-9]+-[A-Z0-9]+$/.test(id)) throw new Error("Invalid payment reference.");
+  const pool = await getStoragePool();
+  if (!pool) throw new StorageUnavailableError();
+  const [rows] = await pool.execute("SELECT id, festival, guests, amount, payment_status, created_at FROM festival_payment_orders WHERE id = ? LIMIT 1", [id]);
+  if (!rows[0]) throw new Error("Payment order was not found.");
+  return rows[0];
 }
 
 async function appendLocalRecord(filePath, record) {
@@ -2051,6 +2202,42 @@ const server = createServer(async (req, res) => {
       sendJson(res, 201, { ok: true, reference: record.id, invoiceUrl: `/${record.invoicePath}`, totalAmount: record.totalAmount });
     } catch (error) {
       sendJson(res, error.statusCode || 400, { ok: false, message: error.message });
+    }
+    return;
+  }
+
+  if (req.method === "POST" && requestUrl.pathname === "/api/festival-payments") {
+    try {
+      const payment = cleanFestivalPayment(await readJsonBody(req));
+      const checkout = await createFestivalPaymentOrder(payment);
+      sendJson(res, 201, { ok: true, orderId: checkout.id, amount: checkout.amount, action: checkout.action, fields: checkout.fields });
+    } catch (error) {
+      sendJson(res, error.statusCode || 400, { ok: false, message: error.message || "Payment could not be started." });
+    }
+    return;
+  }
+
+  if (req.method === "POST" && requestUrl.pathname === "/api/payu/callback") {
+    try {
+      const payload = Object.fromEntries(new URLSearchParams(await readTextBody(req, 200_000)));
+      const result = await completeFestivalPayment(payload);
+      res.writeHead(303, { Location: `/festival-payment-status.html?order=${encodeURIComponent(result.id)}` });
+      res.end();
+    } catch (error) {
+      console.error("PayU payment callback failed.", error.message);
+      res.writeHead(303, { Location: "/festival-payment-status.html?error=verification" });
+      res.end();
+    }
+    return;
+  }
+
+  const festivalPaymentStatusMatch = /^\/api\/festival-payments\/([^/]+)$/.exec(requestUrl.pathname);
+  if (req.method === "GET" && festivalPaymentStatusMatch) {
+    try {
+      const record = await getFestivalPaymentStatus(festivalPaymentStatusMatch[1]);
+      sendJson(res, 200, { ok: true, order: { id: record.id, festival: record.festival, guests: record.guests, amount: Number(record.amount), status: record.payment_status, createdAt: record.created_at } });
+    } catch (error) {
+      sendJson(res, error.statusCode || 400, { ok: false, message: error.message || "Payment status is unavailable." });
     }
     return;
   }

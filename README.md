@@ -1,12 +1,12 @@
 # Northeast Basecamp
 
-Premium Ziro Festival campsite website with a Node.js backend for booking requests.
+Festival stay website for Hornbill and Shillong Cherry Blossom with a Node.js booking backend.
 
 ## What Runs
 
 - Frontend: `index.html`, `styles.css`, `script.js`, local images and video under `assets/`
 - Backend: `server.js`
-- Booking endpoint: `POST /api/bookings`
+- Festival booking checkout: `festival-booking.html` with `POST /api/festival-payments` and a PayU hosted checkout
 - Booking storage: MySQL in production; JSON is a local-development fallback only when no database is configured
 - Booking invoices: each PDF is stored in MySQL with its booking record; `data/invoices/` is only used as a local-development fallback
 - Admin and CRM: `/admin` shows database-backed bookings, enquiries, campaign entries and leads with activity/follow-up tracking, tent inventory and tent allotments
@@ -29,7 +29,7 @@ The app uses `process.env.PORT` when available, otherwise it runs on port `3000`
 6. Output directory: leave blank.
 7. Use Node.js 20 or newer (Node.js 18 also works).
 8. Booking requests and invoice PDFs are stored in MySQL; no persistent local `data/` volume is required in production.
-9. Point the domain to the Node.js app, not only to static hosting, because bookings use `/api/bookings`.
+9. Point the domain to the Node.js app, not only to static hosting, because festival booking and payment verification use `/api/*`.
 
 Hostinger starts the configured entry file automatically after the build. Leave `PORT` unset in hPanel: Hostinger supplies it to the application, and the server reads it automatically (falling back to `3000`). Do not enter `npm start` as the build command, as that launches a second server during the build and produces the `EADDRINUSE` error.
 
@@ -55,9 +55,19 @@ ADMIN_USERNAME=your_private_admin_username
 ADMIN_PASSWORD=your_long_unique_admin_password
 GOOGLE_CHECKIN_SHEET_WEBHOOK_URL=your_google_apps_script_web_app_url
 GOOGLE_CHECKIN_SHEET_WEBHOOK_SECRET=your_long_random_shared_secret
+PAYU_KEY=your_payu_merchant_key
+PAYU_SALT=your_payu_merchant_salt
+PAYU_MODE=production
+PUBLIC_BASE_URL=https://northeastbasecamp.com
+HORNBILL_BOOKING_ADVANCE=your_amount_per_guest_in_inr
+CHERRY_BLOSSOM_BOOKING_ADVANCE=your_amount_per_guest_in_inr
 ```
 
 Do not commit the real password to GitHub. Use Hostinger's Environment Variables screen or import a private `.env` file during deployment.
+
+## PayU festival bookings
+
+The public site no longer displays the legacy Ziro booking form. Festival guests use `festival-booking.html`, which creates a database-backed payment order and forwards the guest to PayU Hosted Checkout. The server calculates the amount from the festival amount variables above, never from the browser. Keep `PAYU_MODE=test` while testing and set `PAYU_MODE=production` only after PayU has issued production credentials. The PayU success and failure return URL is automatically `PUBLIC_BASE_URL/api/payu/callback`; do not change it to a static page. Payment order status is stored in `festival_payment_orders`.
 
 ## Admin and CRM
 

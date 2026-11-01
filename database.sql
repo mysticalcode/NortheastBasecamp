@@ -170,3 +170,22 @@ CREATE TABLE IF NOT EXISTS guest_checkins (
   INDEX guest_checkins_phone (phone),
   INDEX guest_checkins_status (status)
 );
+
+CREATE TABLE IF NOT EXISTS festival_payment_orders (
+  id VARCHAR(40) PRIMARY KEY,
+  txn_id VARCHAR(64) NOT NULL UNIQUE,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  festival VARCHAR(255) NOT NULL,
+  product_code VARCHAR(64) NOT NULL,
+  guests INT NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone VARCHAR(64) NOT NULL,
+  payment_status VARCHAR(32) NOT NULL DEFAULT 'pending',
+  payu_payment_id VARCHAR(128) NULL,
+  payu_response TEXT NULL,
+  INDEX festival_payment_orders_status (payment_status),
+  INDEX festival_payment_orders_created (created_at)
+);

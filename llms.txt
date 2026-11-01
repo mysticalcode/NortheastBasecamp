@@ -1,98 +1,30 @@
 # Northeast Basecamp
 
-Northeast Basecamp is a premium festival campsite and travel-support brand for Northeast India music festivals, starting with Ziro Festival 2026 in Ziro Valley, Arunachal Pradesh.
+Northeast Basecamp provides festival stay requests and travel support for Hornbill Festival in Nagaland and Shillong Cherry Blossom Festival in Meghalaya.
 
-## Primary Offering
+## Current festival stays
 
-Book Ziro Festival 2026 tent stays, a 5N/6D Ex Guwahati journey, or a shorter 4N/5D Ex Naharlagun journey through https://northeastbasecamp.com/.
+- Hornbill Festival, Kisama, Nagaland: secure stay requests are available at https://northeastbasecamp.com/festival-booking.html?festival=hornbill
+- Shillong Cherry Blossom Festival, Meghalaya: secure stay requests are available at https://northeastbasecamp.com/festival-booking.html?festival=cherry-blossom
+- Festival tickets are not included unless a written confirmation says otherwise.
 
-For personalised package support and current availability, guests can enquire on WhatsApp at +91 86387 26594.
+## Booking and payment
 
-## Event
+The booking flow collects guest details, creates a payment reference in Northeast Basecamp's database, and transfers the guest to PayU Hosted Checkout. Payment status is verified server-side before it is confirmed. For availability, stay inclusions or help before payment, contact Northeast Basecamp on WhatsApp at +91 87199 62147.
 
-- Ziro Festival 2026 dates: 24-27 September 2026
-- Location: Ziro Valley, Arunachal Pradesh, India
-- Festival pass: not included by default unless added in writing
+## Stay standards
 
-## Stay Packages
+Northeast Basecamp focuses on comfortable tent stays, clean bedding, clean concrete toilets with three scheduled cleanings daily, guest check-in support, community zones, local culture immersion and practical festival travel guidance. Exact tent category, location, transportation, food and other inclusions are confirmed in writing for every stay.
 
-- Dome Tent - 3 Sharing: INR 2,000 / person / night
-- Dome Tent - 2 Sharing: INR 2,200 / person / night
-- Dome Tent - Solo: INR 3,000 / person / night
-- Alpine Tent - 4 Sharing: INR 2,000 / person / night
-- Alpine Tent - 3 Sharing: INR 2,600 / person / night
-- Alpine Tent - 2 Sharing: INR 3,800 / person / night
-- Premium Tent: INR 4,500 / person / night
+## Festival information
 
-Stay-only guests can request 1, 2, 3, 4 or 5 nights, subject to availability.
-
-## Transport Packages
-
-- Ex Guwahati - Traveller: INR 18,000 / person
-- Ex Guwahati - Urbania: INR 22,000 / person
-- Ex Guwahati - Innova / Ertiga: INR 20,000 / person
-- Ex Naharlagun - 4N/5D: INR 12,000 / person
-
-The Ex Guwahati plan includes a full road-travel day and five campsite nights. The Ex Naharlagun plan is intentionally shorter with four campsite nights and five total days.
-
-## Standard Stay Inclusions
-
-Allocated tent category, clean bedsheet and pillow, daily breakfast, clean concrete washrooms cleaned three times daily, basic charging access, check-in support, festival guidance, campsite community zone subject to permissions, responsible-stay rules.
-
-## Standard Exclusions
-
-Festival entry pass, flights/trains to pickup point, lunch, dinner unless added, snacks, alcohol, personal beverages, fishing, village guide, winery entry or tasting, adventure activities, personal purchases, medicine, insurance, emergency expenses, and disruption costs from weather, roadblocks or festival changes.
-
-## Booking Flow
-
-Users click a package card, the booking form prefills the package, guests and nights, then the user adds contact details and submits. The backend stores the booking request with a generated reference and invoice.
-
-## Common Booking Questions
-
-- One-night Ziro campsite stays are available on request, subject to inventory and festival-date demand.
-- Ziro Festival passes are not included by default.
-- Ex Guwahati is the longer 5N/6D plan because Guwahati to Naharlagun/Arunachal takes a full travel day before reaching Ziro.
-- Ex Naharlagun is the shorter 4N/5D plan for guests already reaching Naharlagun/Itanagar.
-- The campsite is outdoors in Ziro Valley, so guests should expect cool nights, rain-ready packing, concrete shared washrooms and festival-ground conditions.
-- ILP support and transfer guidance can be requested during booking.
-
-## Brand Story
-
-The festival does not end at the stage. It continues at Basecamp. Northeast Basecamp is built around music, bonfires, local culture, curated afterparties, responsible travel, and campsite community.
-
-## Ziro Experience Themes
-
-The website presents Northeast Basecamp as more than a campsite for Ziro Festival 2026: comfortable stays, great vibes, local experiences and stories guests take back home. The main themes are Stay Comfy, Explore Deeply and Celebrate Fully, with a practical focus on comfort, people, culture and responsible festival travel.
-
-Inside Basecamp includes DJ nights and afterparties, community activities, local culture immersion, custom T-shirt printing, bonfire nights, acoustic jam sessions, live art sessions, art and craft workshops, yoga and meditation, local stalls, cafe and dining.
-
-Beyond the campsite includes sunrise trek, community fishing, festival pickup/drop, intercity pickup from Guwahati, Ex Naharlagun/Itanagar transfers, local sightseeing, Apatani village tour, local tribe market and Naara Aaba winery tour add-on.
-
-## Ziro Promotions
-
-- Instagram video contest: Follow @northeast_basecamp, post a video about your Ziro excitement, tag Northeast Basecamp and submit the Instagram link with email and mobile number. Two winners receive a complimentary campsite stay for the full Ziro Festival. Travel and Ziro Music Festival entry tickets are not included. Winners are announced on 15 September 2026.
-- Booking-reference lucky entry: Verified Northeast Basecamp guests can submit their email, mobile number and booking reference. One eligible winner may have one guest's campsite stay made free after verification. Travel and festival entry tickets are not included.
-
-## Northeast India Festival Coverage
-
-Northeast Basecamp begins with Ziro Music Festival 2026 in Arunachal Pradesh and publishes practical travel guidance for major Northeast India festival journeys, including Hornbill Festival in Nagaland, Shillong Cherry Blossom Festival in Meghalaya and Orange Festival of Adventure in Dambuk, Arunachal Pradesh. Future festival-specific stays are subject to availability and published confirmation.
-
-### Hornbill Festival information
-
-- Hornbill Festival 2026 is scheduled for 1-10 December at Naga Heritage Village, Kisama, Nagaland. Check the official Hornbill Festival channels for final schedules, entry information and ticket updates.
-- Northeast Basecamp is not the Hornbill Festival organiser and is not currently accepting Hornbill Festival stay bookings.
-- The independent planning guide is available at https://northeastbasecamp.com/hornbill-festival-stay-guide.html. It explains stay-location choices, practical booking checks and responsible travel guidance without claiming unconfirmed accommodation inventory.
-
-## Local Culture
-
-Ziro Valley is home to the Apatani people and the Apatani Cultural Landscape. Cultural activities are optional, permission-led and designed around local guidance, village customs and photography rules. The website uses culture-specific imagery for the local market, Apatani village landscape and winery visit. It retains one community-fishing image to describe the seasonal paddy-and-fish experience.
-
-## Photo Library
-
-The website includes an All Photos section with real Northeast Basecamp campsite images, Ziro paddy field walks, one community-fishing image, night camp scenes, tent rows, hammocks, guest spaces and a short Basecamp reel. Photos mentioning Northeast Hikers are excluded.
+- Hornbill Festival is held at Naga Heritage Village, Kisama, Nagaland. Check official Hornbill Festival channels for final dates, entry and programme information.
+- Shillong Cherry Blossom Festival takes place in Shillong, Meghalaya. Check official festival channels for final dates, entry and programme information.
+- Northeast Basecamp is not the organiser of either festival.
 
 ## Contact
 
-Email: sales@northeastbasecamp.com
-Phone: +91 96789 80213, +91 87199 62147, +91 88229 14698
-Instagram: https://www.instagram.com/northeast_basecamp?igsh=MWczYzZrMG9tNmd1cA==
+- Website: https://northeastbasecamp.com/
+- Email: sales@northeastbasecamp.com
+- WhatsApp: +91 87199 62147
+- Instagram: https://www.instagram.com/northeast_basecamp?igsh=MWczYzZrMG9tNmd1cA==

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Book a Festival Stay | Northeast Basecamp</title>
+  <link rel="icon" href="assets/nbc-logo.png">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="festival-booking.css">
+</head>
+<body class="festival-payment-page">
+  <main class="payment-shell">
+    <a class="payment-brand" href="index.html" aria-label="Back to Northeast Basecamp"><img src="assets/nbc-logo.png" alt="Northeast Basecamp logo"><span>Northeast Basecamp</span></a>
+    <section class="payment-card">
+      <p class="eyebrow">Secure festival booking</p>
+      <h1>Choose your festival stay.</h1>
+      <p class="payment-intro">Reserve your place for Hornbill or Shillong Cherry Blossom. You will be taken to PayU’s secure payment page to complete the booking payment.</p>
+      <form id="festivalPaymentForm" novalidate>
+        <fieldset>
+          <legend>Festival</legend>
+          <div class="festival-options">
+            <label class="festival-option"><input type="radio" name="productCode" value="hornbill" checked><span><strong>Hornbill Festival</strong><small>Nagaland · December</small></span></label>
+            <label class="festival-option"><input type="radio" name="productCode" value="cherry-blossom"><span><strong>Cherry Blossom Festival</strong><small>Shillong, Meghalaya</small></span></label>
+          </div>
+        </fieldset>
+        <div class="payment-fields">
+          <label>Guest name<input name="name" autocomplete="name" required maxlength="255" placeholder="Your full name"></label>
+          <label>Email<input type="email" name="email" autocomplete="email" required maxlength="255" placeholder="you@example.com"></label>
+          <label>Mobile number<input type="tel" name="phone" autocomplete="tel" required inputmode="tel" pattern="[0-9+ \(\)\-]{7,20}" placeholder="Your mobile number"></label>
+          <label>Number of guests<select name="guests" required><option value="1">1 guest</option><option value="2">2 guests</option><option value="3">3 guests</option><option value="4">4 guests</option><option value="5">5 guests</option><option value="6">6 guests</option></select></label>
+        </div>
+        <p class="payment-note">Your payment is processed by PayU. A successful payment records your request; the Basecamp team will confirm stay availability and final inclusions.</p>
+        <p id="paymentMessage" class="payment-message" aria-live="polite"></p>
+        <button class="button primary payment-submit" type="submit">Continue to secure payment</button>
+      </form>
+      <p class="payment-help">Need help before paying? <a href="https://wa.me/918719962147?text=Hi%20Northeast%20Basecamp%2C%20I%20need%20help%20with%20a%20festival%20stay." target="_blank" rel="noopener">Chat on WhatsApp</a>.</p>
+    </section>
+  </main>
+  <script src="festival-booking.js" defer></script>
+</body>
+</html>
