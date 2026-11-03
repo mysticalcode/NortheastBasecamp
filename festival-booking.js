@@ -2,11 +2,25 @@ const form = document.getElementById("festivalPaymentForm");
 const message = document.getElementById("paymentMessage");
 const submitButton = form?.querySelector("button[type='submit']");
 const requestedFestival = new URLSearchParams(window.location.search).get("festival");
+const cherryCategories = document.getElementById("cherryCategories");
+const festivalOptions = form?.querySelectorAll("input[name='productCode']") || [];
+const categoryOptions = form?.querySelectorAll("input[name='stayCategory']") || [];
+
+function updateFestivalFields() {
+  const isCherryBlossom = form?.querySelector("input[name='productCode']:checked")?.value === "cherry-blossom";
+  if (cherryCategories) cherryCategories.hidden = !isCherryBlossom;
+  categoryOptions.forEach((option) => {
+    option.required = Boolean(isCherryBlossom);
+  });
+}
 
 if (["hornbill", "cherry-blossom"].includes(requestedFestival)) {
   const option = form?.querySelector(`input[name="productCode"][value="${requestedFestival}"]`);
   if (option) option.checked = true;
 }
+
+festivalOptions.forEach((option) => option.addEventListener("change", updateFestivalFields));
+updateFestivalFields();
 
 form?.addEventListener("submit", async (event) => {
   event.preventDefault();

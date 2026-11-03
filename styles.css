@@ -338,7 +338,6 @@ a {
 
 .festival-details li { padding-left: 19px; position: relative; }
 .festival-details li::before { color: var(--leaf); content: "✦"; left: 0; position: absolute; }
-}
 
 .festival-spotlight-card h3 {
   color: var(--forest);
@@ -381,7 +380,6 @@ a {
 .festival-campaign-gallery strong { color: var(--forest); font-size: 1.1rem; }
 .festival-campaign-gallery p { color: var(--muted); line-height: 1.5; margin: 0; }
 .festival-icon { color: var(--orange); font-size: 2rem; font-weight: 900; }
-}
 
 .hero-rhythm {
   align-items: end;

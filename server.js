@@ -29,6 +29,18 @@ const festivalPaymentProducts = {
   hornbill: { festival: "Hornbill Festival", label: "Hornbill Festival stay booking", amount: Number.parseInt(process.env.HORNBILL_BOOKING_ADVANCE || "0", 10) },
   "cherry-blossom": { festival: "Shillong Cherry Blossom Festival", label: "Cherry Blossom Festival stay booking", amount: Number.parseInt(process.env.CHERRY_BLOSSOM_BOOKING_ADVANCE || "0", 10) }
 };
+const cherryBlossomStayCategories = {
+  "solo-dome": { label: "Solo Dome Tent", sharing: 1, rate: 2799 },
+  "premium-dome-3": { label: "Premium Dome · 3 sharing", sharing: 3, rate: 2200 },
+  "premium-dome-2": { label: "Premium Dome · 2 sharing", sharing: 2, rate: 2999 },
+  "premium-couple-dome": { label: "Premium Couple Dome", sharing: 2, rate: 3999 },
+  "alpine-4": { label: "Alpine Tent · 4 sharing", sharing: 4, rate: 2499 },
+  "alpine-3": { label: "Alpine Tent · 3 sharing", sharing: 3, rate: 3199 },
+  "alpine-2": { label: "Alpine Tent · 2 sharing", sharing: 2, rate: 4999 },
+  "premium-safari-4": { label: "Premium Safari Tent · 4 sharing", sharing: 4, rate: 4999 },
+  "premium-safari-3": { label: "Premium Safari Tent · 3 sharing", sharing: 3, rate: 6999 },
+  "premium-safari-2": { label: "Premium Safari Tent · 2 sharing", sharing: 2, rate: 9999 }
+};
 const ziroFestival = "Ziro Music Festival 2026";
 const dinnerRatePerGuestNight = 400;
 const creatorReferralCodes = new Set([
@@ -396,8 +408,10 @@ async function initializeDatabase(pool) {
       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       festival VARCHAR(255) NOT NULL,
       product_code VARCHAR(64) NOT NULL,
+      stay_category VARCHAR(128) NULL,
       guests INT NOT NULL,
       amount DECIMAL(10,2) NOT NULL,
+      rate_per_guest DECIMAL(10,2) NOT NULL,
       name VARCHAR(255) NOT NULL,
       email VARCHAR(255) NOT NULL,
       phone VARCHAR(64) NOT NULL,
@@ -408,6 +422,11 @@ async function initializeDatabase(pool) {
       INDEX festival_payment_orders_created (created_at)
     )
   `);
+  const [festivalPaymentColumns] = await pool.query("SHOW COLUMNS FROM festival_payment_orders");
+  const festivalPaymentColumnNames = new Set(festivalPaymentColumns.map((column) => column.Field));
+  for (const [name, definition] of [["stay_category", "VARCHAR(128) NULL"], ["rate_per_guest", "DECIMAL(10,2) NOT NULL DEFAULT 0"]]) {
+    if (!festivalPaymentColumnNames.has(name)) await pool.query(`ALTER TABLE festival_payment_orders ADD COLUMN ${name} ${definition}`);
+  }
 }
 
 function positiveInteger(value, fallback = 1) {
@@ -620,18 +639,23 @@ function cleanFestivalPayment(input) {
   const name = String(input.name || "").trim();
   const email = cleanEmail(input.email);
   const phone = String(input.phone || "").trim();
-  const guests = Number(input.guests || 0);
+  let guests = Number(input.guests || 0);
+  const stayCategoryCode = String(input.stayCategory || "").trim().toLowerCase();
+  const stayCategory = productCode === "cherry-blossom" ? cherryBlossomStayCategories[stayCategoryCode] : null;
 
   if (!product) throw new Error("Please choose Hornbill or Cherry Blossom.");
   if (!name || name.length > 255) throw new Error("Please enter the guest name.");
+  if (productCode === "cherry-blossom" && !stayCategory) throw new Error("Please choose a Cherry Blossom stay category.");
+  if (stayCategory) guests = stayCategory.sharing;
   if (!Number.isInteger(guests) || guests < 1 || guests > 12) throw new Error("Guest count must be between 1 and 12.");
   if (phone.replace(/\D/g, "").length < 7 || phone.replace(/\D/g, "").length > 15) throw new Error("Please enter a valid mobile number.");
-  if (!Number.isSafeInteger(product.amount) || product.amount <= 0) {
+  const ratePerGuest = stayCategory ? stayCategory.rate : product.amount;
+  if (!Number.isSafeInteger(ratePerGuest) || ratePerGuest <= 0) {
     const error = new Error("Online payment is not available for this festival yet. Please contact Northeast Basecamp for availability.");
     error.statusCode = 503;
     throw error;
   }
-  return { productCode, product, name, email, phone, guests, amount: product.amount * guests };
+  return { productCode, product, name, email, phone, guests, stayCategory, ratePerGuest, amount: ratePerGuest * guests };
 }
 
 function cleanBooking(input) {
@@ -1235,9 +1259,9 @@ async function createFestivalPaymentOrder(payment) {
   try {
     await pool.execute(
       `INSERT INTO festival_payment_orders
-       (id, txn_id, festival, product_code, guests, amount, name, email, phone, payment_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
-      [id, txnid, payment.product.festival, payment.productCode, payment.guests, amount, payment.name, payment.email, payment.phone]
+       (id, txn_id, festival, product_code, stay_category, guests, amount, rate_per_guest, name, email, phone, payment_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+      [id, txnid, payment.product.festival, payment.productCode, payment.stayCategory?.label || null, payment.guests, amount, payment.ratePerGuest.toFixed(2), payment.name, payment.email, payment.phone]
     );
   } catch (error) {
     console.error("Festival payment order insert failed.", error.message);
@@ -1248,7 +1272,7 @@ async function createFestivalPaymentOrder(payment) {
     key: payuKey,
     txnid,
     amount,
-    productinfo: payment.product.label,
+    productinfo: payment.stayCategory ? `${payment.product.label} · ${payment.stayCategory.label}` : payment.product.label,
     firstname: payment.name,
     email: payment.email,
     phone: payment.phone,
@@ -2051,6 +2075,12 @@ const server = createServer(async (req, res) => {
     }
     res.setHeader("Cache-Control", "no-store");
     req.url = "/admin.html";
+    await serveStatic(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && ["/ziro", "/ziro/"].includes(requestUrl.pathname)) {
+    req.url = "/ziro.html";
     await serveStatic(req, res);
     return;
   }
