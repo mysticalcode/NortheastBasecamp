@@ -2085,6 +2085,18 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === "GET" && ["/hornbill", "/hornbill/"].includes(requestUrl.pathname)) {
+    req.url = "/hornbill.html";
+    await serveStatic(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && ["/cherryblossom", "/cherryblossom/"].includes(requestUrl.pathname)) {
+    req.url = "/cherryblossom.html";
+    await serveStatic(req, res);
+    return;
+  }
+
   if (requestUrl.pathname.startsWith("/api/admin/")) {
     if (!requireAdmin(req, res)) {
       return;
