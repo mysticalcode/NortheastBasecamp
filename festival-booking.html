@@ -13,45 +13,50 @@
   <main class="payment-shell">
     <a class="payment-brand" href="index.html" aria-label="Back to Northeast Basecamp"><img src="assets/nbc-logo.png" alt="Northeast Basecamp logo"><span>Northeast Basecamp</span></a>
     <section class="payment-card">
-      <p class="eyebrow">Secure festival booking</p>
-      <h1>Choose your festival stay.</h1>
-      <p class="payment-intro">Reserve your place for Hornbill or Shillong Cherry Blossom. You will be taken to PayU’s secure payment page to complete the booking payment.</p>
-      <form id="festivalPaymentForm" novalidate>
-        <fieldset>
-          <legend>Festival</legend>
-          <div class="festival-options">
-            <label class="festival-option"><input type="radio" name="productCode" value="hornbill" checked><span><strong>Hornbill Festival</strong><small>Nagaland · December</small></span></label>
-            <label class="festival-option"><input type="radio" name="productCode" value="cherry-blossom"><span><strong>Cherry Blossom Festival</strong><small>Shillong, Meghalaya</small></span></label>
+      <p class="eyebrow">Festival booking request</p>
+      <h1>Find your festival tent.</h1>
+      <p class="payment-intro">Choose a festival and stay style, then send your request. We will save your booking details and generate a booking invoice immediately—no online payment is required.</p>
+      <form id="festivalBookingForm" novalidate>
+        <label class="festival-select-label" for="festivalSelect"><span>Festival</span>
+          <select id="festivalSelect" name="productCode">
+            <option value="hornbill">Hornbill Festival · Nagaland</option>
+            <option value="cherry-blossom">Shillong Cherry Blossom Festival · Meghalaya</option>
+          </select>
+        </label>
+
+        <section class="tent-picker" aria-labelledby="tentPickerTitle">
+          <div class="tent-picker-heading">
+            <div><p class="eyebrow" id="tentPickerKicker">Hornbill Festival stays</p><h2 id="tentPickerTitle">Choose your tent</h2></div>
+            <p id="tentPickerSummary" class="tent-picker-summary"></p>
           </div>
-        </fieldset>
-        <section class="cherry-categories" id="cherryCategories" hidden aria-labelledby="cherryCategoriesTitle">
-          <div><p class="eyebrow">Cherry Blossom stay categories</p><h2 id="cherryCategoriesTitle">Choose your tent category.</h2><p>Every category includes a comfortable mattress and bedsheet, soft pillows and warm blankets, a separate camp zone, daily breakfast, bonfire/music zone and clean toilets with three daily cleanings.</p></div>
-          <div class="category-grid">
-            <label class="stay-category"><input type="radio" name="stayCategory" value="solo-dome"><span><strong>Solo Dome Tent</strong><small>1 guest · ₹2,799 per person</small></span></label>
-            <label class="stay-category"><input type="radio" name="stayCategory" value="premium-dome-3"><span><strong>Premium Dome</strong><small>3 sharing · ₹2,200 per person</small></span></label>
-            <label class="stay-category"><input type="radio" name="stayCategory" value="premium-dome-2"><span><strong>Premium Dome</strong><small>2 sharing · ₹2,999 per person</small></span></label>
-            <label class="stay-category"><input type="radio" name="stayCategory" value="premium-couple-dome"><span><strong>Premium Couple Dome</strong><small>2 sharing · ₹3,999 per person</small></span></label>
-            <label class="stay-category"><input type="radio" name="stayCategory" value="alpine-4"><span><strong>Alpine Tent</strong><small>4 sharing · ₹2,499 per person</small></span></label>
-            <label class="stay-category"><input type="radio" name="stayCategory" value="alpine-3"><span><strong>Alpine Tent</strong><small>3 sharing · ₹3,199 per person</small></span></label>
-            <label class="stay-category"><input type="radio" name="stayCategory" value="alpine-2"><span><strong>Alpine Tent</strong><small>2 sharing · ₹4,999 per person</small></span></label>
-            <label class="stay-category"><input type="radio" name="stayCategory" value="premium-safari-4"><span><strong>Premium Safari Tent</strong><small>4 sharing · ₹4,999 per person</small></span></label>
-            <label class="stay-category"><input type="radio" name="stayCategory" value="premium-safari-3"><span><strong>Premium Safari Tent</strong><small>3 sharing · ₹6,999 per person</small></span></label>
-            <label class="stay-category"><input type="radio" name="stayCategory" value="premium-safari-2"><span><strong>Premium Safari Tent</strong><small>2 sharing · ₹9,999 per person</small></span></label>
-          </div>
+          <div id="stayCategories" class="category-grid" role="radiogroup" aria-label="Tent options"></div>
         </section>
+
         <div class="payment-fields">
           <label>Guest name<input name="name" autocomplete="name" required maxlength="255" placeholder="Your full name"></label>
-          <label>Email<input type="email" name="email" autocomplete="email" required maxlength="255" placeholder="you@example.com"></label>
-          <label>Mobile number<input type="tel" name="phone" autocomplete="tel" required inputmode="tel" pattern="[0-9+ \(\)\-]{7,20}" placeholder="Your mobile number"></label>
-          <label>Number of guests<select name="guests" required><option value="1">1 guest</option><option value="2">2 guests</option><option value="3">3 guests</option><option value="4">4 guests</option><option value="5">5 guests</option><option value="6">6 guests</option></select></label>
+          <label>Mobile number<input type="tel" name="phone" autocomplete="tel" required inputmode="tel" pattern="[0-9+ ()-]{7,20}" placeholder="Your mobile number"></label>
+          <label>Arrival date<input type="date" name="arrivalDate" required></label>
+          <div class="stay-detail" aria-live="polite"><span>Selected stay</span><strong id="selectedStay">Choose a tent to see your booking total.</strong></div>
         </div>
-        <p class="payment-note">Your payment is processed by PayU. A successful payment records your request; the Basecamp team will confirm stay availability and final inclusions.</p>
-        <p id="paymentMessage" class="payment-message" aria-live="polite"></p>
-        <button class="button primary payment-submit" type="submit">Continue to secure payment</button>
+        <p class="payment-note">This is a booking request, not a payment receipt. Your invoice confirms the details shared with Northeast Basecamp; our team will contact you to confirm availability and next steps.</p>
+        <p id="bookingMessage" class="payment-message" aria-live="polite"></p>
+        <button class="button primary payment-submit" type="submit">Generate booking invoice</button>
       </form>
-      <p class="payment-help">Need help before paying? <a href="https://wa.me/918719962147?text=Hi%20Northeast%20Basecamp%2C%20I%20need%20help%20with%20a%20festival%20stay." target="_blank" rel="noopener">Chat on WhatsApp</a>.</p>
+      <p class="payment-help">Need help choosing a stay? <a href="https://wa.me/918719962147?text=Hi%20Northeast%20Basecamp%2C%20I%20need%20help%20with%20a%20festival%20stay." target="_blank" rel="noopener">Chat on WhatsApp</a>.</p>
     </section>
   </main>
+
+  <dialog id="invoiceDialog" class="invoice-dialog" aria-labelledby="invoiceDialogTitle">
+    <div class="invoice-dialog-card">
+      <button class="invoice-close" type="button" data-close-invoice aria-label="Close confirmation">×</button>
+      <p class="eyebrow">Request received</p>
+      <h2 id="invoiceDialogTitle">Excited to host you.</h2>
+      <p>Your festival stay request is safely recorded. Soon, you will receive a personalised invitation on WhatsApp.</p>
+      <p class="invoice-reference">Booking reference: <strong id="invoiceDialogReference"></strong></p>
+      <div class="invoice-preview"><iframe id="invoiceFrame" title="Booking invoice preview"></iframe></div>
+      <div class="invoice-actions"><a id="invoiceDownload" class="button primary" href="#" target="_blank" rel="noopener">Open invoice</a><button class="button ghost" type="button" data-close-invoice>Done</button></div>
+    </div>
+  </dialog>
   <script src="festival-booking.js" defer></script>
 </body>
 </html>
