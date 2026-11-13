@@ -9,7 +9,7 @@ Festival stay website for Hornbill and Shillong Cherry Blossom with a Node.js bo
 - Festival booking requests: `festival-booking.html` with `POST /api/festival-bookings` and an immediate booking-request invoice
 - Booking storage: MySQL in production; JSON is a local-development fallback only when no database is configured
 - Booking invoices: each PDF is stored in MySQL with its booking record; `data/invoices/` is only used as a local-development fallback
-- Admin and CRM: `/admin` shows database-backed bookings, enquiries, campaign entries and leads with activity/follow-up tracking, tent inventory and tent allotments
+- Admin: `/admin` is a bookings-only operations desk for guest booking records, invoices, stay coordination and archived-booking restore
 
 ## Local Run
 
@@ -63,9 +63,13 @@ Do not commit the real password to GitHub. Use Hostinger's Environment Variables
 
 Festival guests use `festival-booking.html`, select Hornbill or Cherry Blossom and choose a tent/sharing category. The server calculates the displayed stay total from its own rate catalogue, stores the request with the selected category and generates a booking-request invoice. The invoice confirms the requested stay details; it is not a payment receipt and the Basecamp team confirms availability and next steps directly.
 
-## Admin and CRM
+## Booking administration
 
-Open `/admin` and sign in with `ADMIN_USERNAME` and `ADMIN_PASSWORD`. Both values are required in Hostinger before the private area can be opened. The CRM supports manual leads, search and status filtering, booking-reference linking, quoted prices in INR, scheduled follow-ups, interaction notes and conversion of website enquiries into leads. Leads and bookings can be deleted from the active workspace and restored from the recycle bin; booking data and invoice PDFs are retained. Archived leads can also be permanently deleted, which removes the lead and its interaction history. Booking Operations is a private per-booking record for payment progress, amount due, pickup and drop plans, meals, ID-proof progress, guest requests, staff assignments and notes. Saving it updates the booking status and its operations record together, while preserving the guest invoice. Tent Operations records each physical Dome, Alpine or Premium tent and lets staff allot it to a booking. An allotment is checked against the booked package's tent type, guest capacity, operational status and overlapping dates before it is saved. The server creates the `leads`, `lead_activities`, `booking_operations`, `tent_units` and `tent_allocations` tables automatically; `database.sql` contains the same schema for manual setup.
+Open `/admin` and sign in with `ADMIN_USERNAME` and `ADMIN_PASSWORD`. Both values are required in Hostinger before the private area can be opened. The booking desk lists active booking requests, their invoices, current stay status and a private operations record for payments, pickup/drop, meals, ID-proof progress, guest requests, staff assignments and notes. Saving operations updates the booking status while preserving the guest invoice. Deleted bookings can be restored from the booking archive.
+
+### Clearing application records
+
+To deliberately clear all stored application records while retaining the database structure, run `npm run clear-booking-database` with the production `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` variables, plus `CONFIRM_CLEAR_BOOKINGS=ERASE_ALL_NORTHEAST_BASECAMP_DATA`. This command clears bookings and associated operational, enquiry, campaign, CRM, tent, check-in and payment-order records. It keeps migration safeguards so legacy `data/bookings.json` records are not imported again.
 
 The app creates the required tables automatically on first database use. You can also run `database.sql` manually in phpMyAdmin. The `/healthz` response returns HTTP 200 with `database: "ok"` only after it can connect to MySQL; a production database problem returns HTTP 503.
 

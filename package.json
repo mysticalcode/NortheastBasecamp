@@ -10,7 +10,8 @@
   "scripts": {
     "build": "node -e \"console.log('No build step required for Northeast Basecamp')\"",
     "dev": "node server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "clear-booking-database": "node scripts/clear-booking-database.js"
   },
   "dependencies": {
     "mysql2": "^3.23.1",

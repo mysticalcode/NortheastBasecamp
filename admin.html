@@ -5,180 +5,52 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow, noarchive">
     <meta name="theme-color" content="#073d31">
-    <title>Northeast Basecamp | Operations</title>
+    <title>Northeast Basecamp | Booking Operations</title>
     <link rel="icon" type="image/png" href="/assets/nbc-logo.png">
     <link rel="apple-touch-icon" href="/assets/nbc-logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/admin.css?v=crm-20260911-referrals-1">
+    <link rel="stylesheet" href="/admin.css?v=bookings-20261113-1">
   </head>
   <body>
     <main class="admin-shell">
       <header class="admin-header">
-        <a class="admin-brand" href="/" aria-label="Return to Northeast Basecamp website">
-          <img src="/assets/nbc-logo.png" alt="Northeast Basecamp">
-          <span><strong>Northeast Basecamp</strong><small>Operations desk</small></span>
-        </a>
-        <div class="header-actions">
-          <span class="connection-status" id="connectionStatus">Connecting to records…</span>
-          <button class="button ghost" id="refreshButton" type="button">Refresh data</button>
-        </div>
+        <a class="admin-brand" href="/" aria-label="Return to Northeast Basecamp website"><img src="/assets/nbc-logo.png" alt="Northeast Basecamp"><span><strong>Northeast Basecamp</strong><small>Booking operations</small></span></a>
+        <div class="header-actions"><span class="connection-status" id="connectionStatus">Loading bookings…</span><button class="button ghost" id="refreshButton" type="button">Refresh</button></div>
       </header>
-
-      <section class="admin-intro">
-        <div>
-          <p class="eyebrow">Guest relationships</p>
-          <h1>One clear view of every request.</h1>
-          <p>Review festival bookings, respond to enquiries and keep each lead moving with a follow-up trail.</p>
-        </div>
-        <p class="sync-note">Private admin area · MySQL-backed</p>
-      </section>
-
-      <section class="metric-grid" aria-label="Operations overview">
-        <article class="metric-card"><span>Total bookings</span><strong id="metricBookings">—</strong></article>
-        <article class="metric-card"><span>New enquiries</span><strong id="metricEnquiries">—</strong></article>
-        <article class="metric-card"><span>Open leads</span><strong id="metricLeads">—</strong></article>
-        <article class="metric-card accent"><span>Follow-ups due</span><strong id="metricFollowUps">—</strong></article>
-        <article class="metric-card tent-metric"><span>Active tent allotments</span><strong id="metricAllocations">—</strong></article>
-      </section>
-
-      <section class="crm-layout" aria-label="Lead CRM">
-        <article class="panel lead-capture">
-          <div class="panel-heading">
-            <p class="eyebrow">Manual lead</p>
-            <h2>Add a conversation</h2>
-            <p>Log phone calls, WhatsApp enquiries, referrals or walk-ins before they slip away.</p>
-          </div>
-          <form id="leadForm" class="admin-form">
-            <p class="form-hint">Every field is optional. Save a lead with only the details you have, then enrich it as the conversation progresses.</p>
-            <label>Guest name<input name="name" autocomplete="name" maxlength="255" placeholder="Full name, if known"></label>
-            <div class="form-row">
-              <label>Mobile<input name="phone" autocomplete="tel" inputmode="tel" placeholder="+91 98765 43210"></label>
-              <label>Email<input name="email" autocomplete="email" type="email" placeholder="guest@example.com"></label>
-            </div>
-            <div class="form-row">
-              <label>Source<select name="source"><option value="manual">Manual</option><option value="phone">Phone</option><option value="whatsapp">WhatsApp</option><option value="instagram">Instagram</option><option value="referral">Referral</option><option value="other">Other</option></select></label>
-              <label>Status<select name="status"><option value="new">New</option><option value="contacted">Contacted</option><option value="waiting">Waiting for guest</option><option value="qualified">Qualified</option><option value="proposal">Proposal sent</option><option value="booking-requested">Booking requested</option><option value="booking-confirmed">Booking confirmed</option><option value="payment-pending">Payment pending</option><option value="paid">Payment received</option><option value="checked-in">Checked in</option><option value="completed">Completed stay</option><option value="won">Won</option><option value="lost">Lost</option></select></label>
-            </div>
-            <label>Interest / subject<input name="subject" maxlength="255" placeholder="Ziro stay, transport, group booking…"></label>
-            <div class="form-row">
-              <label>Booking reference <input name="bookingReference" maxlength="40" placeholder="NBC-…"></label>
-              <label>Quoted price (INR)<input name="quotedPrice" type="number" min="0" max="10000000" step="1" inputmode="numeric" placeholder="e.g. 18000"></label>
-            </div>
-            <label>Next follow-up<input name="nextFollowUpAt" type="datetime-local"></label>
-            <label>Context and notes<textarea name="notes" rows="5" maxlength="5000" placeholder="What do they need? What should happen next?"></textarea></label>
-            <button class="button primary" type="submit">Add lead to CRM</button>
-          </form>
-        </article>
-
-        <article class="panel lead-workspace">
-          <div class="panel-heading heading-inline">
-            <div><p class="eyebrow">CRM pipeline</p><h2>Track the next move</h2></div>
-            <span class="count-pill" id="leadCount">0 leads</span>
-          </div>
-          <div class="workspace-tools" aria-label="Filter lead pipeline">
-            <input id="leadSearch" type="search" placeholder="Search name, phone, email or booking…" autocomplete="off">
-            <select id="leadStatusFilter" aria-label="Filter leads by status"><option value="">All lead statuses</option><option value="new">New</option><option value="contacted">Contacted</option><option value="waiting">Waiting for guest</option><option value="qualified">Qualified</option><option value="proposal">Proposal sent</option><option value="booking-requested">Booking requested</option><option value="booking-confirmed">Booking confirmed</option><option value="payment-pending">Payment pending</option><option value="paid">Payment received</option><option value="checked-in">Checked in</option><option value="completed">Completed stay</option><option value="won">Won</option><option value="lost">Lost</option></select>
-          </div>
-          <div class="lead-list" id="leadList" aria-live="polite"><p class="empty-state">Loading your lead pipeline…</p></div>
-        </article>
-      </section>
-
+      <section class="admin-intro"><div><p class="eyebrow">Private booking desk</p><h1>Every guest stay, in one place.</h1><p>Manage booking status, guest stay details, invoice access and on-ground coordination.</p></div><p class="sync-note">MySQL-backed booking records</p></section>
+      <section class="metric-grid" aria-label="Booking overview"><article class="metric-card"><span>Total bookings</span><strong id="metricBookings">—</strong></article><article class="metric-card"><span>Active stays</span><strong id="metricActiveBookings">—</strong></article><article class="metric-card accent"><span>Booking value</span><strong id="metricBookingTotal">—</strong></article></section>
       <section class="data-section" aria-labelledby="bookingHeading">
-        <div class="section-heading"><div><p class="eyebrow">Booking requests</p><h2 id="bookingHeading">Recent guest bookings</h2></div><span class="count-pill" id="bookingCount">0 records</span></div>
-        <div class="table-wrap"><table><thead><tr><th>Guest</th><th>Package</th><th>Creator referral</th><th>Stay</th><th>Total</th><th>Invoice</th><th>Allot tent</th><th>Requested</th><th>Actions</th></tr></thead><tbody id="bookingRows"></tbody></table></div>
+        <div class="section-heading"><div><p class="eyebrow">Guest bookings</p><h2 id="bookingHeading">Current booking requests</h2></div><span class="count-pill" id="bookingCount">0 records</span></div>
+        <div class="table-wrap"><table><thead><tr><th>Guest</th><th>Festival &amp; stay</th><th>Dates</th><th>Guests</th><th>Total</th><th>Invoice</th><th>Actions</th></tr></thead><tbody id="bookingRows"></tbody></table></div>
       </section>
-
       <section class="data-section booking-operations" id="bookingOperationsPanel" aria-labelledby="bookingOperationsHeading">
-        <div class="section-heading"><div><p class="eyebrow">Guest operations</p><h2 id="bookingOperationsHeading">Complete the stay plan</h2></div><span class="count-pill">Private operational notes</span></div>
-        <p class="operations-intro">Add the information your booking tracker needs—payments, transport, meals, proof and staff coordination—without changing the guest’s invoice.</p>
+        <div class="section-heading"><div><p class="eyebrow">Guest operations</p><h2 id="bookingOperationsHeading">Prepare the stay</h2></div><span class="count-pill">Private booking notes</span></div>
+        <p class="operations-intro">Update payment progress, tent details, transport, meals and guest handover notes. These updates do not alter the guest invoice.</p>
         <form id="bookingOperationsForm" class="admin-form">
           <label>Booking<select id="bookingOperationsBooking" name="bookingReference" required><option value="">Choose a booking</option></select></label>
           <p id="bookingOperationsSummary" class="operations-summary" aria-live="polite">Choose a booking to prepare its operations record.</p>
           <fieldset id="bookingOperationsFields" disabled>
             <div class="form-row"><label>Booking status<select name="bookingStatus"><option value="new">New request</option><option value="provisional">Provisional</option><option value="confirmed">Confirmed</option><option value="part-paid">Part paid</option><option value="paid">Paid in full</option><option value="checked-in">Checked in</option><option value="checked-out">Checked out</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label><label>Payment status<select name="paymentStatus"><option value="unpaid">Unpaid</option><option value="part-paid">Part paid</option><option value="paid">Paid</option><option value="refunded">Refunded</option></select></label></div>
             <div class="form-row"><label>Guest email<input name="email" type="email" maxlength="255" placeholder="guest@example.com"></label><label>Full address<input name="fullAddress" maxlength="5000" placeholder="Address, city and state"></label></div>
-            <div class="form-row"><label>Tent number / code<input name="tentNumber" maxlength="64" placeholder="DM-1"></label><label>Assigned staff<input name="assignedStaff" maxlength="255" placeholder="Coordinator or host"></label></div>
-            <div class="form-row"><label>Rate per night (INR)<input name="ratePerNight" type="number" min="0" max="10000000" step="1" inputmode="numeric"></label><label>Stay amount (INR)<input name="stayAmount" type="number" min="0" max="10000000" step="1" inputmode="numeric"></label></div>
-            <div class="form-row"><label>Advance paid (INR)<input name="advancePaid" type="number" min="0" max="10000000" step="1" inputmode="numeric"></label><label>Booking source<input name="bookingSource" maxlength="128" placeholder="Website, B2B partner, referral…"></label></div>
-            <div class="operations-block"><div class="operations-block-heading"><h3>Pickup</h3><label class="switch-field"><input name="pickupRequired" type="checkbox"><span>Required</span></label></div><div class="form-row"><label>City / point<input name="pickupPoint" maxlength="255" placeholder="Airport, station or hotel"></label><label>Date<input name="pickupDate" type="date"></label></div><label>Time<input name="pickupTime" type="time"></label></div>
-            <div class="operations-block"><div class="operations-block-heading"><h3>Drop</h3><label class="switch-field"><input name="dropRequired" type="checkbox"><span>Required</span></label></div><div class="form-row"><label>City / point<input name="dropPoint" maxlength="255" placeholder="Airport, station or hotel"></label><label>Date<input name="dropDate" type="date"></label></div><label>Time<input name="dropTime" type="time"></label></div>
-            <div class="form-row"><label>Transport amount (INR)<input name="transportAmount" type="number" min="0" max="10000000" step="1" inputmode="numeric"></label><label>Meal preference<input name="mealPreference" maxlength="64" placeholder="No meals, vegetarian, vegan…"></label></div>
-            <div class="form-row"><label>Lunch quantity / day<input name="lunchQtyPerDay" type="number" min="0" max="100" step="1" inputmode="numeric"></label><label>Dinner quantity / day<input name="dinnerQtyPerDay" type="number" min="0" max="100" step="1" inputmode="numeric"></label></div>
-            <div class="form-row"><label>Meal amount (INR)<input name="mealAmount" type="number" min="0" max="10000000" step="1" inputmode="numeric"></label><label>ID proof status<select name="idProofStatus"><option value="pending">Pending</option><option value="received">Received</option><option value="verified">Verified</option><option value="not-required">Not required</option></select></label></div>
+            <div class="form-row"><label>Tent number / code<input name="tentNumber" maxlength="64" placeholder="Tent number"></label><label>Assigned staff<input name="assignedStaff" maxlength="255" placeholder="Coordinator or host"></label></div>
+            <div class="form-row"><label>Rate per night (INR)<input name="ratePerNight" type="number" min="0" max="10000000" step="1"></label><label>Stay amount (INR)<input name="stayAmount" type="number" min="0" max="10000000" step="1"></label></div>
+            <div class="form-row"><label>Advance paid (INR)<input name="advancePaid" type="number" min="0" max="10000000" step="1"></label><label>Booking source<input name="bookingSource" maxlength="128" placeholder="Website, referral…"></label></div>
+            <div class="operations-block"><div class="operations-block-heading"><h3>Pickup</h3><label class="switch-field"><input name="pickupRequired" type="checkbox"><span>Required</span></label></div><div class="form-row"><label>Point<input name="pickupPoint" maxlength="255" placeholder="Airport, station or hotel"></label><label>Date<input name="pickupDate" type="date"></label></div><label>Time<input name="pickupTime" type="time"></label></div>
+            <div class="operations-block"><div class="operations-block-heading"><h3>Drop</h3><label class="switch-field"><input name="dropRequired" type="checkbox"><span>Required</span></label></div><div class="form-row"><label>Point<input name="dropPoint" maxlength="255" placeholder="Airport, station or hotel"></label><label>Date<input name="dropDate" type="date"></label></div><label>Time<input name="dropTime" type="time"></label></div>
+            <div class="form-row"><label>Transport amount (INR)<input name="transportAmount" type="number" min="0" max="10000000" step="1"></label><label>Meal preference<input name="mealPreference" maxlength="64" placeholder="Vegetarian, no meals…"></label></div>
+            <div class="form-row"><label>Lunch quantity / day<input name="lunchQtyPerDay" type="number" min="0" max="100" step="1"></label><label>Dinner quantity / day<input name="dinnerQtyPerDay" type="number" min="0" max="100" step="1"></label></div>
+            <div class="form-row"><label>Meal amount (INR)<input name="mealAmount" type="number" min="0" max="10000000" step="1"></label><label>ID proof status<select name="idProofStatus"><option value="pending">Pending</option><option value="received">Received</option><option value="verified">Verified</option><option value="not-required">Not required</option></select></label></div>
             <label>Special requests / allergies<textarea name="specialRequests" rows="3" maxlength="5000" placeholder="Guest preferences, dietary needs or accessibility requests"></textarea></label>
             <label>Internal notes<textarea name="internalNotes" rows="4" maxlength="5000" placeholder="Private handover notes for the camp team"></textarea></label>
             <button class="button primary" type="submit">Save booking operations</button>
           </fieldset>
         </form>
       </section>
-
-      <section class="tent-layout" aria-label="Tent operations">
-        <article class="panel tent-capture">
-          <div class="panel-heading">
-            <p class="eyebrow">Tent inventory</p>
-            <h2>Keep every tent ready</h2>
-            <p>Add the physical tents you operate. Availability is protected against overlapping stay dates.</p>
-          </div>
-          <form id="tentForm" class="admin-form">
-            <div class="form-row">
-              <label>Tent code<input name="tentCode" required maxlength="64" pattern="[A-Za-z0-9-]{2,64}" placeholder="D-01"></label>
-              <label>Tent type<select name="tentType" required><option value="Dome Tent">Dome Tent</option><option value="Alpine Tent">Alpine Tent</option><option value="Premium Tent">Premium Tent</option></select></label>
-            </div>
-            <div class="form-row">
-              <label>Guest capacity<input name="capacity" required type="number" min="1" max="12" value="2"></label>
-              <label>Operational status<select name="operationalStatus"><option value="available">Available</option><option value="maintenance">Maintenance</option><option value="retired">Retired</option></select></label>
-            </div>
-            <label>Operations note<textarea name="notes" rows="3" maxlength="5000" placeholder="Setup, repairs, special considerations…"></textarea></label>
-            <button class="button primary" type="submit">Add tent to inventory</button>
-          </form>
-          <div class="inventory-list" id="tentInventory" aria-live="polite"></div>
-        </article>
-
-        <article class="panel allocation-panel" id="allocationPanel">
-          <div class="panel-heading">
-            <p class="eyebrow">Stay operations</p>
-            <h2>Allot a tent to a booking</h2>
-            <p>Package compatibility, capacity and date clashes are checked before an allotment is saved.</p>
-          </div>
-          <form id="allocationForm" class="admin-form">
-            <label>Booking<select id="allocationBooking" name="bookingReference" required><option value="">Choose a booking</option></select></label>
-            <div class="form-row">
-              <label>Allotted tent<select id="allocationTent" name="tentId" required><option value="">Choose a tent</option></select></label>
-              <label>Guests in this tent<input id="allocationGuests" name="guestCount" required type="number" min="1" max="12" value="1"></label>
-            </div>
-            <div class="form-row">
-              <label>Arrival<input id="allocationArrival" name="arrivalDate" required type="date"></label>
-              <label>Departure<input id="allocationDeparture" name="departureDate" required type="date"></label>
-            </div>
-            <div class="form-row">
-              <label>Allotment status<select name="allocationStatus"><option value="reserved">Reserved</option><option value="checked-in">Checked in</option><option value="checked-out">Checked out</option><option value="cancelled">Cancelled</option></select></label>
-              <label>Allocation note<input name="notes" maxlength="5000" placeholder="Rooming or arrival notes"></label>
-            </div>
-            <button class="button primary" type="submit">Save tent allotment</button>
-          </form>
-          <div class="allocation-list" id="allocationList" aria-live="polite"></div>
-        </article>
-      </section>
-
-      <section class="data-section" aria-labelledby="enquiryHeading">
-        <div class="section-heading"><div><p class="eyebrow">Website inbox</p><h2 id="enquiryHeading">Guest enquiries</h2></div><span class="count-pill" id="enquiryCount">0 records</span></div>
-        <div class="enquiry-list" id="enquiryList"></div>
-      </section>
-
-      <section class="secondary-grid" aria-label="Campaign entries">
-        <article class="data-section compact"><div class="section-heading"><div><p class="eyebrow">Instagram contest</p><h2>Video entries</h2></div><span class="count-pill" id="contestCount">0</span></div><div class="mini-list" id="contestList"></div></article>
-        <article class="data-section compact"><div class="section-heading"><div><p class="eyebrow">Lucky stay draw</p><h2>Booking entries</h2></div><span class="count-pill" id="luckyCount">0</span></div><div class="mini-list" id="luckyList"></div></article>
-      </section>
-
-      <section class="data-section compact recycle-bin" aria-labelledby="recycleHeading">
-        <div class="section-heading"><div><p class="eyebrow">Recycle bin</p><h2 id="recycleHeading">Deleted records</h2></div><span class="count-pill" id="archiveCount">0</span></div>
-        <p class="recycle-note">Deleting a lead or booking removes it from the active workspace. Records and booking invoices stay protected here until restored. Archived leads can also be permanently deleted with their interaction history.</p>
-        <div class="archive-list" id="archiveList"></div>
-      </section>
+      <section class="data-section compact recycle-bin" aria-labelledby="recycleHeading"><div class="section-heading"><div><p class="eyebrow">Archived bookings</p><h2 id="recycleHeading">Restore a deleted booking</h2></div><span class="count-pill" id="archiveCount">0</span></div><p class="recycle-note">Archived bookings remain available for restoration. Their booking details and invoice stay protected.</p><div class="archive-list" id="archiveList"></div></section>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="/admin.js?v=crm-20261113-adminfix-1" defer></script>
+    <script src="/admin.js?v=bookings-20261113-1" defer></script>
   </body>
 </html>
