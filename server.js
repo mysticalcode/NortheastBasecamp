@@ -20,18 +20,6 @@ const invoicesDirectory = join(__dirname, "data", "invoices");
 const checkinsFile = join(__dirname, "data", "checkins.json");
 const checkinSheetWebhookUrl = process.env.GOOGLE_CHECKIN_SHEET_WEBHOOK_URL || "";
 const checkinSheetWebhookSecret = process.env.GOOGLE_CHECKIN_SHEET_WEBHOOK_SECRET || "";
-const cherryBlossomStayCategories = {
-  "solo-dome": { label: "Solo Dome Tent", sharing: 1, rate: 2799 },
-  "premium-dome-3": { label: "Premium Dome · 3 sharing", sharing: 3, rate: 2200 },
-  "premium-dome-2": { label: "Premium Dome · 2 sharing", sharing: 2, rate: 2999 },
-  "premium-couple-dome": { label: "Premium Couple Dome", sharing: 2, rate: 3999 },
-  "alpine-4": { label: "Alpine Tent · 4 sharing", sharing: 4, rate: 2499 },
-  "alpine-3": { label: "Alpine Tent · 3 sharing", sharing: 3, rate: 3199 },
-  "alpine-2": { label: "Alpine Tent · 2 sharing", sharing: 2, rate: 4999 },
-  "premium-safari-4": { label: "Premium Safari Tent · 4 sharing", sharing: 4, rate: 4999 },
-  "premium-safari-3": { label: "Premium Safari Tent · 3 sharing", sharing: 3, rate: 6999 },
-  "premium-safari-2": { label: "Premium Safari Tent · 2 sharing", sharing: 2, rate: 9999 }
-};
 const hornbillStayCategories = {
   "dome-early-2": { label: "Dome Tent · Early Bird · 2 sharing", sharing: 2, rate: 999 },
   "dome-early-solo": { label: "Dome Tent · Early Bird · Solo", sharing: 1, rate: 1499 },
@@ -55,8 +43,7 @@ const hornbillStayCategories = {
   byot: { label: "Bring Your Own Tent", sharing: 1, rate: 599 }
 };
 const festivalBookingProducts = {
-  hornbill: { festival: "Hornbill Festival 2026", categories: hornbillStayCategories },
-  "cherry-blossom": { festival: "Shillong Cherry Blossom Festival 2026", categories: cherryBlossomStayCategories }
+  hornbill: { festival: "Hornbill Festival 2026", categories: hornbillStayCategories }
 };
 const ziroFestival = "Ziro Music Festival 2026";
 const dinnerRatePerGuestNight = 400;
@@ -182,6 +169,7 @@ async function initializeDatabase(pool) {
       festival VARCHAR(255) NOT NULL,
       plan VARCHAR(255) NOT NULL,
       arrival_date DATE NULL,
+      checkout_date DATE NULL,
       nights INT NOT NULL,
       guests INT NOT NULL,
       dinner_included TINYINT(1) NOT NULL DEFAULT 0,
@@ -217,7 +205,8 @@ async function initializeDatabase(pool) {
     ["invoice_data", "LONGBLOB NULL"],
     ["invoice_content_type", "VARCHAR(64) NULL"],
     ["deleted_at", "DATETIME NULL"],
-    ["referral_code", "VARCHAR(64) NULL"]
+    ["referral_code", "VARCHAR(64) NULL"],
+    ["checkout_date", "DATE NULL"]
   ];
   for (const [name, definition] of requiredBookingColumns) {
     if (!bookingColumnNames.has(name)) {
@@ -637,27 +626,35 @@ async function readTextBody(req, maxBytes = 20_000) {
 }
 
 function cleanFestivalBooking(input) {
-  const productCode = String(input.productCode || "").trim().toLowerCase();
-  const product = festivalBookingProducts[productCode];
+  const product = festivalBookingProducts.hornbill;
   const categoryCode = String(input.stayCategory || "").trim().toLowerCase();
   const category = product?.categories[categoryCode];
   const name = String(input.name || "").trim();
   const phone = String(input.phone || "").trim();
-  const arrivalDate = String(input.arrivalDate || "").trim();
+  const arrivalDate = String(input.checkinDate || input.arrivalDate || "").trim();
+  const checkoutDate = String(input.checkoutDate || "").trim();
+  const guests = Number(input.guests || 0);
 
-  if (!product) throw new Error("Please choose Hornbill or Cherry Blossom.");
   if (!category) throw new Error("Please choose a tent and sharing option.");
   if (!name || name.length > 255) throw new Error("Please enter the guest name.");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(arrivalDate)) throw new Error("Please select a valid arrival date.");
+  if (!/^2026-12-(0[1-9]|10)$/.test(arrivalDate)) throw new Error("Check-in must be during Hornbill Festival, from 1 to 10 December 2026.");
+  if (!/^2026-12-(0[2-9]|1[01])$/.test(checkoutDate)) throw new Error("Please select a valid checkout date.");
   if (phone.replace(/\D/g, "").length < 7 || phone.replace(/\D/g, "").length > 15) throw new Error("Please enter a valid mobile number.");
+  if (!Number.isInteger(guests) || guests < 1 || guests > category.sharing) throw new Error(`This tent option can be booked for 1 to ${category.sharing} guest${category.sharing === 1 ? "" : "s"}.`);
 
-  const baseAmount = category.rate * category.sharing;
+  const checkin = new Date(`${arrivalDate}T00:00:00Z`);
+  const checkout = new Date(`${checkoutDate}T00:00:00Z`);
+  const nights = Math.round((checkout - checkin) / 86_400_000);
+  if (!Number.isInteger(nights) || nights < 1 || nights > 10) throw new Error("Checkout must be after check-in and within the Hornbill Festival stay period.");
+
+  const baseAmount = category.rate * guests * nights;
   return {
     festival: product.festival,
     plan: category.label,
     arrivalDate,
-    nights: 1,
-    guests: category.sharing,
+    checkoutDate,
+    nights,
+    guests,
     dinnerIncluded: false,
     name,
     phone,
@@ -1152,7 +1149,8 @@ async function createInvoicePdf(record) {
     [12, "Booking details"],
     [10, `Festival: ${record.festival}`],
     [10, `Package: ${record.plan}`],
-    [10, `Arrival: ${record.arrivalDate}`],
+    [10, `Check-in: ${record.arrivalDate}`],
+    [10, `Checkout: ${record.checkoutDate || "To be confirmed"}`],
     [10, `Guests: ${record.guests} | Nights: ${record.nights}`],
     [10, `Dinner: ${record.dinnerIncluded ? "Included" : "Not included"}`],
     [10, ""],
@@ -1217,8 +1215,8 @@ async function saveBooking(booking) {
     try {
       await pool.execute(
         `INSERT INTO bookings
-          (id, created_at, status, festival, plan, arrival_date, nights, guests, dinner_included, base_amount, dinner_amount, total_amount, name, phone, invoice_path, invoice_data, invoice_content_type, source, referral_code)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          (id, created_at, status, festival, plan, arrival_date, checkout_date, nights, guests, dinner_included, base_amount, dinner_amount, total_amount, name, phone, invoice_path, invoice_data, invoice_content_type, source, referral_code)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           record.id,
           record.createdAt.slice(0, 19).replace("T", " "),
@@ -1226,6 +1224,7 @@ async function saveBooking(booking) {
           record.festival,
           record.plan,
           record.arrivalDate || null,
+          record.checkoutDate || null,
           record.nights,
           record.guests,
           record.dinnerIncluded ? 1 : 0,
@@ -1400,7 +1399,7 @@ async function getAdminDashboard() {
         (SELECT COUNT(*) FROM tent_allocations WHERE allocation_status IN ('reserved', 'checked-in')) AS active_allocations
     `),
     pool.query(`
-      SELECT b.id, b.created_at, b.status, b.source, b.referral_code, b.festival, b.plan, b.arrival_date, b.nights, b.guests, b.dinner_included,
+      SELECT b.id, b.created_at, b.status, b.source, b.referral_code, b.festival, b.plan, b.arrival_date, b.checkout_date, b.nights, b.guests, b.dinner_included,
              b.base_amount, b.dinner_amount, b.total_amount, b.name, b.phone, b.invoice_path,
              CASE WHEN b.invoice_data IS NULL OR OCTET_LENGTH(b.invoice_data) = 0 THEN 0 ELSE 1 END AS invoice_stored,
              o.full_address, o.email AS operations_email, o.tent_number, o.rate_per_night, o.stay_amount,
@@ -1493,6 +1492,7 @@ async function getAdminDashboard() {
       festival: booking.festival,
       plan: booking.plan,
       arrival_date: booking.arrival_date,
+      checkout_date: booking.checkout_date,
       nights: booking.nights,
       guests: booking.guests,
       dinner_included: booking.dinner_included,

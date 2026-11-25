@@ -4,59 +4,40 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Book a Festival Stay | Northeast Basecamp</title>
+  <title>Book Hornbill Festival Stay 2026 | Northeast Basecamp</title>
   <link rel="icon" href="assets/nbc-logo.png">
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="festival-booking.css">
+  <link rel="stylesheet" href="festival-booking.css?v=hornbill-20261125-1">
 </head>
 <body class="festival-payment-page">
   <main class="payment-shell">
-    <a class="payment-brand" href="index.html" aria-label="Back to Northeast Basecamp"><img src="assets/nbc-logo.png" alt="Northeast Basecamp logo"><span>Northeast Basecamp</span></a>
+    <a class="payment-brand" href="hornbill.html" aria-label="Back to Hornbill stays"><img src="assets/nbc-logo.png" alt="Northeast Basecamp logo"><span>Northeast Basecamp</span></a>
     <section class="payment-card">
-      <p class="eyebrow">Festival booking request</p>
-      <h1>Find your festival tent.</h1>
-      <p class="payment-intro">Choose a festival and stay style, then send your request. We will save your booking details and generate a booking invoice immediately—no online payment is required.</p>
+      <p class="eyebrow">Hornbill Festival · Nagaland · 1–10 December 2026</p>
+      <h1>Book your Hornbill stay.</h1>
+      <p class="payment-intro">Choose your check-in and checkout dates, tent style and guest count. Your complete booking total appears before you request an invoice.</p>
       <form id="festivalBookingForm" novalidate>
-        <label class="festival-select-label" for="festivalSelect"><span>Festival</span>
-          <select id="festivalSelect" name="productCode">
-            <option value="hornbill">Hornbill Festival · Nagaland</option>
-            <option value="cherry-blossom">Shillong Cherry Blossom Festival · Meghalaya</option>
-          </select>
-        </label>
-
-        <section class="tent-picker" aria-labelledby="tentPickerTitle">
-          <div class="tent-picker-heading">
-            <div><p class="eyebrow" id="tentPickerKicker">Hornbill Festival stays</p><h2 id="tentPickerTitle">Choose your tent</h2></div>
-            <p id="tentPickerSummary" class="tent-picker-summary"></p>
-          </div>
-          <div id="stayCategories" class="category-grid" role="radiogroup" aria-label="Tent options"></div>
+        <section class="booking-package" aria-label="Selected festival package"><p class="eyebrow">Hornbill package</p><strong>Hornbill Festival 2026 · Campsite stay</strong><span>1–10 December · Nagaland · Festival entry is separate</span></section>
+        <section class="booking-dates" aria-labelledby="datesHeading">
+          <div><p class="eyebrow">1 · Stay dates</p><h2 id="datesHeading">When are you camping?</h2></div>
+          <div class="payment-fields"><label>Check-in date<input type="date" name="checkinDate" id="checkinDate" min="2026-12-01" max="2026-12-10" required></label><label>Checkout date<input type="date" name="checkoutDate" id="checkoutDate" min="2026-12-02" max="2026-12-11" required></label></div>
         </section>
-
-        <div class="payment-fields">
-          <label>Guest name<input name="name" autocomplete="name" required maxlength="255" placeholder="Your full name"></label>
-          <label>Mobile number<input type="tel" name="phone" autocomplete="tel" required inputmode="tel" pattern="[0-9+ ()-]{7,20}" placeholder="Your mobile number"></label>
-          <label>Arrival date<input type="date" name="arrivalDate" required></label>
-          <div class="stay-detail" aria-live="polite"><span>Selected stay</span><strong id="selectedStay">Choose a tent to see your booking total.</strong></div>
-        </div>
-        <p class="payment-note">This is a booking request, not a payment receipt. Your invoice confirms the details shared with Northeast Basecamp; our team will contact you to confirm availability and next steps.</p>
+        <section class="tent-picker" aria-labelledby="tentPickerTitle">
+          <div class="tent-picker-heading"><div><p class="eyebrow">2 · Tent type</p><h2 id="tentPickerTitle">Choose your tent</h2></div><p id="tentPickerSummary" class="tent-picker-summary">Each card shows the rate per guest, per night, and the maximum sharing capacity.</p></div>
+          <div id="stayCategories" class="category-grid" role="radiogroup" aria-label="Hornbill tent options"></div>
+        </section>
+        <section class="guest-details" aria-labelledby="guestHeading">
+          <div><p class="eyebrow">3 · Your details</p><h2 id="guestHeading">Who is staying?</h2></div>
+          <div class="payment-fields"><label>Guest name<input name="name" autocomplete="name" required maxlength="255" placeholder="Your full name"></label><label>Mobile number<input type="tel" name="phone" autocomplete="tel" required inputmode="tel" placeholder="Your mobile number"></label><label>Number of guests<select name="guests" id="guestCount" required></select></label><div class="stay-detail" aria-live="polite"><span>Your booking total</span><strong id="selectedStay">Select dates and a tent to see your total.</strong></div></div>
+        </section>
+        <p class="payment-note">This is a booking request, not a payment receipt. We generate your invoice immediately and confirm availability with you on WhatsApp.</p>
         <p id="bookingMessage" class="payment-message" aria-live="polite"></p>
         <button class="button primary payment-submit" type="submit">Generate booking invoice</button>
       </form>
-      <p class="payment-help">Need help choosing a stay? <a href="https://wa.me/918719962147?text=Hi%20Northeast%20Basecamp%2C%20I%20need%20help%20with%20a%20festival%20stay." target="_blank" rel="noopener">Chat on WhatsApp</a>.</p>
+      <p class="payment-help">Need help choosing a tent? <a href="https://wa.me/918719962147?text=Hi%20Northeast%20Basecamp%2C%20I%20need%20help%20with%20a%20Hornbill%20Festival%20stay." target="_blank" rel="noopener">Chat on WhatsApp</a>.</p>
     </section>
   </main>
-
-  <dialog id="invoiceDialog" class="invoice-dialog" aria-labelledby="invoiceDialogTitle">
-    <div class="invoice-dialog-card">
-      <button class="invoice-close" type="button" data-close-invoice aria-label="Close confirmation">×</button>
-      <p class="eyebrow">Request received</p>
-      <h2 id="invoiceDialogTitle">Excited to host you.</h2>
-      <p>Your festival stay request is safely recorded. Soon, you will receive a personalised invitation on WhatsApp.</p>
-      <p class="invoice-reference">Booking reference: <strong id="invoiceDialogReference"></strong></p>
-      <div class="invoice-preview"><iframe id="invoiceFrame" title="Booking invoice preview"></iframe></div>
-      <div class="invoice-actions"><a id="invoiceDownload" class="button primary" href="#" target="_blank" rel="noopener">Open invoice</a><button class="button ghost" type="button" data-close-invoice>Done</button></div>
-    </div>
-  </dialog>
-  <script src="festival-booking.js" defer></script>
+  <dialog id="invoiceDialog" class="invoice-dialog" aria-labelledby="invoiceDialogTitle"><div class="invoice-dialog-card"><button class="invoice-close" type="button" data-close-invoice aria-label="Close confirmation">×</button><p class="eyebrow">Booking request received</p><h2 id="invoiceDialogTitle">Excited to host you.</h2><p>Your Hornbill stay request is safely recorded. Soon, you will receive a personalised invitation on WhatsApp.</p><p class="invoice-reference">Booking reference: <strong id="invoiceDialogReference"></strong></p><div class="invoice-preview"><iframe id="invoiceFrame" title="Hornbill booking invoice preview"></iframe></div><div class="invoice-actions"><a id="invoiceDownload" class="button primary" href="#" target="_blank" rel="noopener">Open invoice</a><button class="button ghost" type="button" data-close-invoice>Done</button></div></div></dialog>
+  <script src="festival-booking.js?v=hornbill-20261125-1" defer></script>
 </body>
 </html>

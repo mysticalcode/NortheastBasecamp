@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   festival VARCHAR(255) NOT NULL,
   plan VARCHAR(255) NOT NULL,
   arrival_date DATE NULL,
+  checkout_date DATE NULL,
   nights INT NOT NULL,
   guests INT NOT NULL,
   dinner_included TINYINT(1) NOT NULL DEFAULT 0,
