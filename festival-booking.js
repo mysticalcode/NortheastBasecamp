@@ -60,6 +60,15 @@ form?.addEventListener("submit", async (event) => {
     const response = await fetch("/api/festival-bookings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.ok || !result.invoiceUrl) throw new Error(result.message || "Your booking request could not be saved right now.");
-    message.textContent = "Your booking request is confirmed. Your invoice is ready."; invoiceReference.textContent = result.reference || ""; invoiceFrame.src = result.invoiceUrl; invoiceDownload.href = result.invoiceUrl; if (typeof invoiceDialog?.showModal === "function") invoiceDialog.showModal();
+    const bookingReference = result.reference || "";
+    if (typeof window.gtag === "function") {
+      window.gtag("event", "conversion", {
+        send_to: "AW-18594650315/A1udCP2y6b8dEMuxz6JF",
+        value: Number(result.totalAmount || 0),
+        currency: "INR",
+        transaction_id: bookingReference
+      });
+    }
+    message.textContent = "Your booking request is confirmed. Your invoice is ready."; invoiceReference.textContent = bookingReference; invoiceFrame.src = result.invoiceUrl; invoiceDownload.href = result.invoiceUrl; if (typeof invoiceDialog?.showModal === "function") invoiceDialog.showModal();
   } catch (error) { message.textContent = error.message || "Your booking request could not be saved right now."; message.className = "payment-message error"; } finally { submitButton.disabled = false; }
 });
