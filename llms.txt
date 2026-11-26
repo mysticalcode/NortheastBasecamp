@@ -1,16 +1,16 @@
 # Northeast Basecamp
 
-Northeast Basecamp provides festival stay requests and travel support for Hornbill Festival in Nagaland and Shillong Cherry Blossom Festival in Meghalaya.
+Northeast Basecamp provides Hornbill Festival campsite stays and travel support in Nagaland.
 
 ## Current festival stays
 
-- Hornbill Festival, Kisama, Nagaland: secure stay requests are available at https://northeastbasecamp.com/festival-booking.html?festival=hornbill
-- Shillong Cherry Blossom Festival, Meghalaya: secure stay requests are available at https://northeastbasecamp.com/festival-booking.html?festival=cherry-blossom
+- Hornbill Festival 2026, Kisama, Nagaland: campsite stay requests are available at https://northeastbasecamp.com/festival-booking.html
+- Hornbill Festival campsite stays include Dome Tent, Alpine Tent, Premium Tent and Bring Your Own Tent options, subject to availability.
 - Festival tickets are not included unless a written confirmation says otherwise.
 
 ## Booking
 
-The booking flow collects the guest name, mobile number, festival, tent category and arrival date. It stores the booking request in Northeast Basecamp's database and generates a booking-request invoice immediately. This invoice is not a payment receipt; availability and any payment instructions are confirmed by the Basecamp team. For availability or stay inclusions, contact Northeast Basecamp on WhatsApp at +91 87199 62147.
+The booking flow collects the guest name, mobile number, Hornbill check-in date, checkout date, tent category and guest count. It calculates the stay total, stores the booking request in Northeast Basecamp's database and generates a booking-request invoice immediately. This invoice is not a payment receipt; availability and any payment instructions are confirmed by the Basecamp team. For availability or stay inclusions, contact Northeast Basecamp on WhatsApp at +91 87199 62147.
 
 ## Stay standards
 
@@ -19,9 +19,7 @@ Northeast Basecamp focuses on comfortable tent stays, clean bedding, clean concr
 ## Festival information
 
 - Hornbill Festival is held at Naga Heritage Village, Kisama, Nagaland. Check official Hornbill Festival channels for final dates, entry and programme information.
-- Shillong Cherry Blossom Festival takes place in Shillong, Meghalaya. Check official festival channels for final dates, entry and programme information.
-- Northeast Basecamp is not the organiser of either festival.
-- Northeast Basecamp's Cherry Blossom Festival campsite is approximately 200 metres from the festival venue and offers tent stays, an in-house cafe and bar, guest parking, afterparty programming and Guwahati transfer support.
+- Northeast Basecamp is not the Hornbill Festival organiser. Festival tickets are separate unless a written package confirmation says otherwise.
 
 ## Contact
 
